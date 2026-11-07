@@ -17,6 +17,7 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using Proto.Diagnostics;
 using Proto.Promises.Collections;
 using Proto.Timers;
 using System;
@@ -94,8 +95,15 @@ namespace Proto.Promises
         internal enum VoidResult : byte { }
 
         partial class HandleablePromiseBase
+#if PROMISE_DEBUG
+            : ITraceable
+#endif
         {
             internal HandleablePromiseBase _next;
+#if PROMISE_DEBUG
+            // In DEBUG mode, causality traces are stored in fields (see ITraceable).
+            CausalityTrace ITraceable.Trace { get; set; }
+#endif
         }
 
         partial class PromiseSynchronousWaiter : HandleablePromiseBase
@@ -147,7 +155,6 @@ namespace Proto.Promises
         partial class PromiseRefBase : PromiseRefBaseWithStructField
         {
 #if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
             internal PromiseRefBase _previous; // Used to detect circular awaits.
 #endif
 

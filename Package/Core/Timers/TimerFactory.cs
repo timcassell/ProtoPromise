@@ -70,7 +70,7 @@ namespace Proto.Timers
         {
             if (timeProvider is null)
             {
-                throw new Promises.ArgumentNullException(nameof(timeProvider), $"The provided {nameof(timeProvider)} may not be null", GetFormattedStacktrace(1));
+                throw new Promises.ArgumentNullException(nameof(timeProvider), $"The provided {nameof(timeProvider)} may not be null", GetFormattedStacktrace());
             }
 
             return timeProvider == TimeProvider.System ? System

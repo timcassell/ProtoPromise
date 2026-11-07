@@ -15,7 +15,6 @@ namespace ProtoPromise.Tests
         {
             // Pool threads globally because creating new threads is expensive.
             private static readonly Stack<ThreadRunner> s_pool = new Stack<ThreadRunner>();
-            private static int s_threadCounter;
 
             private BackgroundSynchronizationContext _owner;
             private readonly object _locker = new object();
@@ -54,7 +53,8 @@ namespace ProtoPromise.Tests
                         new Thread(threadRunner.ThreadAction)
                         {
                             IsBackground = true,
-                            Name = $"TestBackgroundContext_{Interlocked.Increment(ref s_threadCounter)}"
+                            // The threads share a name, like the threads of a thread pool, so causality traces group their repeats.
+                            Name = "TestBackgroundContext"
                         }.Start();
                     }
                 }

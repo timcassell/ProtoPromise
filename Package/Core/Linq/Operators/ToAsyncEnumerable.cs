@@ -15,7 +15,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this IAsyncEnumerable<T> source)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return AsyncEnumerable<T>.Create(source, async (_source, writer, cancelationToken) =>
             {
@@ -50,7 +50,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<T> ToAsyncEnumerable<T, TEnumerator>(this TEnumerator source)
             where TEnumerator : IEnumerator<T>
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return AsyncEnumerable<T>.Create(new EnumeratorIterator<T, TEnumerator>(source));
         }
@@ -89,7 +89,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this IEnumerable<T> source)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return source.GetEnumerator().ToAsyncEnumerable<T, IEnumerator<T>>();
         }
@@ -99,7 +99,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this T[] source)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return source.GetGenericEnumerator().ToAsyncEnumerable<T, Internal.ArrayEnumerator<T>>();
         }
@@ -109,7 +109,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> ToAsyncEnumerable<T>(this List<T> source)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
 
             return source.GetEnumerator().ToAsyncEnumerable<T, List<T>.Enumerator>();
         }

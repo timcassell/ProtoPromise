@@ -6,6 +6,7 @@
 
 #pragma warning disable IDE0251 // Make member 'readonly'
 
+using Proto.Diagnostics;
 using Proto.Promises.Threading;
 using System;
 using System.Collections.Generic;
@@ -166,7 +167,7 @@ namespace Proto.Promises
             }
             else if (maxDegreeOfParallelism < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace());
             }
 
             // Just return immediately if from >= to.
@@ -198,7 +199,7 @@ namespace Proto.Promises
             else if (maxDegreeOfParallelism < 1)
             {
                 enumerator.Dispose();
-                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace(2));
+                throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism), "maxDegreeOfParallelism must be positive, or -1 for default (Environment.ProcessorCount). Actual: " + maxDegreeOfParallelism, GetFormattedStacktrace());
             }
 
             // One fast up-front check for cancelation before we start the whole operation.
@@ -289,7 +290,7 @@ namespace Proto.Promises
                         // We add to the wait counter before we run the worker to resolve a race condition where the counter could hit zero prematurely.
                         InterlockedAddWithUnsignedOverflowCheck(ref _waitCounter, 1);
 
-                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
+                        ScheduleContextCallbackDirect(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerAndLaunchNext()
                         );
@@ -334,7 +335,36 @@ namespace Proto.Promises
 
                 private void ExecuteWorker(bool launchNext)
                 {
-                    SetCurrentInvoker(this);
+                    if (!CausalityTrace.IsEnabled)
+                    {
+                        // Common case: no causality trace.
+                        ExecuteWorkerCore(launchNext);
+                    }
+                    else
+                    {
+                        ExecuteWorkerInScope(launchNext);
+                    }
+                }
+
+                // NoInlining to keep the common case small. It only wraps ExecuteWorkerCore, so that AOT compilers (e.g. IL2CPP)
+                // don't generate another copy of its exception handling for every loop type.
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                private void ExecuteWorkerInScope(bool launchNext)
+                {
+                    // A loop that wasn't traced doesn't enter a scope, the same as the common case.
+                    var scope = CausalityTrace.EnterScopeInternal(Trace);
+                    try
+                    {
+                        ExecuteWorkerCore(launchNext);
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                    }
+                }
+
+                private void ExecuteWorkerCore(bool launchNext)
+                {
                     try
                     {
                         WorkerBody(launchNext);
@@ -351,7 +381,6 @@ namespace Proto.Promises
                         RecordException(e);
                         CancelWorkersAndMaybeComplete();
                     }
-                    ClearCurrentInvoker();
                 }
 
                 private void WorkerBody(bool launchNext)
@@ -400,7 +429,9 @@ namespace Proto.Promises
                     if (state == Promise.State.Resolved)
                     {
                         // Schedule the worker body to run again on the context, but without launching another worker.
-                        ScheduleContextCallback(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
+                        // The loop schedules the worker again after its previous body completed, so it doesn't capture where it was scheduled.
+                        // That's what completed the previous body, which doesn't concern the next one.
+                        ScheduleContextCallbackDirect(ContinuationContext.UnsafeAs<SynchronizationContext>(), this,
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext(),
                             obj => obj.UnsafeAs<PromiseParallelForEach<TEnumerator, TParallelBody, TSource>>().ExecuteWorkerWithoutLaunchNext()
                         );
@@ -474,7 +505,7 @@ namespace Proto.Promises
                     // This must be the very last thing done.
                     if (_exceptions != null)
                     {
-                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(new AggregateException(_exceptions), false, this);
                         _exceptions = null;
                         HandleNextInternal(Promise.State.Rejected);
                     }

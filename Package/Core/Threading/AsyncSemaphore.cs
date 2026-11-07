@@ -44,16 +44,17 @@ namespace Proto.Promises.Threading
             if (maxCount <= 0 | initialCount < 0 | initialCount > maxCount)
             {
                 throw maxCount <= 0
-                    ? new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than 0", Internal.GetFormattedStacktrace(1))
-                    : new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace(1));
+                    ? new ArgumentOutOfRangeException(nameof(maxCount), "maxCount must be greater than 0", Internal.GetFormattedStacktrace())
+                    : new ArgumentOutOfRangeException(nameof(initialCount), "initialCount must be >= 0 and <= maxCount", Internal.GetFormattedStacktrace());
             }
 
             _currentCount = initialCount;
             _maxCount = maxCount;
-            SetCreatedStacktrace();
+#if PROMISE_DEBUG
+            // Only the finalizer reads it, which reports abandoned waiters in DEBUG mode.
+            Internal.SetCreatedStacktrace(this);
+#endif
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Get the number of times remaining that this <see cref="AsyncSemaphore"/> can be entered concurrently.
@@ -142,7 +143,7 @@ namespace Proto.Promises.Threading
         {
             if (releaseCount < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(releaseCount), "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(releaseCount), "releaseCount cannot be less than 1", Internal.GetFormattedStacktrace());
             }
 
             ReleaseImpl(releaseCount);

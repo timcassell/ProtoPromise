@@ -5,8 +5,10 @@
 #endif
 
 #pragma warning disable IDE0074 // Use compound assignment
+#pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
+using Proto.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,11 +24,35 @@ namespace Proto.Promises
     {
         internal static void ScheduleContextCallback(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
         {
+            if (!CausalityTrace.IsEnabled)
+            {
+                ScheduleContextCallbackDirect(context, state, contextCallback, threadpoolCallback);
+                return;
+            }
+            ScheduleContextCallbackInScope(context, state, contextCallback, threadpoolCallback);
+        }
+
+        // The callback is invoked in the scope of a trace of where it was scheduled, because what scheduled it (e.g. the code that completed an awaited promise)
+        // is not on the stack when the callback runs on the context. If the callback enters its own scope, its own trace is the Previous trace
+        // of traces captured inside it, and the trace of where it was scheduled is one of their outer traces (see CausalityTrace.OuterTraces).
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ScheduleContextCallbackInScope(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
+            => ScheduleContextCallbackDirect(context,
+                new ScopedContextCallback(state, contextCallback, threadpoolCallback, CausalityTrace.Capture()),
+                ScopedContextCallback.s_contextCallback, ScopedContextCallback.s_threadpoolCallback);
+
+        // Schedules the callback without capturing where it was scheduled. Used for callbacks that are scheduled when their object is created
+        // (e.g. Promise.Run), whose own trace already shows where they were scheduled, and for hand-offs inside the library (e.g. between parallel workers).
+        internal static void ScheduleContextCallbackDirect(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
+        {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             if (context == null)
             {
                 throw new System.InvalidOperationException("context cannot be null");
             }
+#endif
+#if PROTO_PROMISE_DEVELOPER_MODE
+            // Callbacks are wrapped to catch bugs in the library, so that they are reported instead of crashing the test process.
             if (context == BackgroundSynchronizationContextSentinel.s_instance)
             {
                 ThreadPool.QueueUserWorkItem(_ =>
@@ -39,7 +65,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, state as ITraceable);
+                        ScopedContextCallback.Report(e, state);
                     }
                 }, null);
             }
@@ -55,7 +81,7 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never happen.
-                        ReportRejection(e, state as ITraceable);
+                        ScopedContextCallback.Report(e, state);
                     }
                 }, null);
             }
@@ -71,10 +97,133 @@ namespace Proto.Promises
 #endif
         }
 
-        internal static IRejectContainer CreateRejectContainer(object reason, int rejectSkipFrames, Exception exceptionWithStacktrace, ITraceable traceable)
-            => RejectContainer.Create(reason, rejectSkipFrames + 1, exceptionWithStacktrace, traceable);
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        private sealed class ScopedContextCallback
+        {
+            internal static readonly SendOrPostCallback s_contextCallback = InvokeContextCallback;
+            internal static readonly WaitCallback s_threadpoolCallback = InvokeThreadpoolCallback;
 
-        internal static void ReportRejection(object unhandledValue, ITraceable traceable)
+            private readonly object _state;
+            private readonly SendOrPostCallback _contextCallback;
+            private readonly WaitCallback _threadpoolCallback;
+            private readonly CausalityTrace _trace;
+
+#if PROTO_PROMISE_DEVELOPER_MODE
+            // Reports an exception that a scheduled callback threw (which should never happen) with the trace of what was scheduled,
+            // or with the trace of where it was scheduled if it doesn't have one.
+            internal static void Report(Exception exception, object state)
+            {
+                if (state is ScopedContextCallback callback)
+                {
+                    state = callback._state;
+                    if (GetTrace(state) == null && !(exception is ICantHandleException))
+                    {
+                        ReportUnhandledValue(exception, callback._trace);
+                        return;
+                    }
+                }
+                ReportRejection(exception, state);
+            }
+#endif
+
+            internal ScopedContextCallback(object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback, CausalityTrace trace)
+            {
+                _state = state;
+                _contextCallback = contextCallback;
+                _threadpoolCallback = threadpoolCallback;
+                _trace = trace;
+            }
+
+            private static void InvokeContextCallback(object obj)
+            {
+                var callback = obj.UnsafeAs<ScopedContextCallback>();
+                var scope = CausalityTrace.EnterScopeInternal(callback._trace);
+                try
+                {
+                    callback._contextCallback.Invoke(callback._state);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+
+            private static void InvokeThreadpoolCallback(object obj)
+            {
+                var callback = obj.UnsafeAs<ScopedContextCallback>();
+                var scope = CausalityTrace.EnterScopeInternal(callback._trace);
+                try
+                {
+                    callback._threadpoolCallback.Invoke(callback._state);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+        }
+
+        // Reports an exception that user code threw, with a trace captured where it was caught, which shows what invoked the code.
+        // The scope of the operation that invoked the code must still be entered, so that it's the trace's cause.
+        internal static void ReportCaughtException(Exception exception, object traceable)
+        {
+            if (exception is ICantHandleException ex)
+            {
+                ex.ReportUnhandled(traceable);
+                return;
+            }
+            // The exception may have been rethrown, so we use the trace of where it was originally rejected or thrown (see ExceptionRejectionContainer).
+            if (!TryGetExceptionTrace(exception, out var trace))
+            {
+                trace = CausalityTrace.Capture();
+            }
+            ReportUnhandledValue(exception, trace);
+        }
+
+        // Invokes a timer's callback, in the scope of the timer's trace if causality traces are enabled, and reports an exception that it throws.
+        [MethodImpl(InlineOption)]
+        internal static void InvokeTimerCallback(TimerCallback callback, object state, object timer)
+        {
+            if (!CausalityTrace.IsEnabled)
+            {
+                // Common case: no causality trace.
+                try
+                {
+                    callback.Invoke(state);
+                }
+                catch (Exception e)
+                {
+                    ReportRejection(e, timer);
+                }
+                return;
+            }
+            InvokeTimerCallbackInScope(callback, state, timer);
+        }
+
+        // NoInlining to keep the common case small.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void InvokeTimerCallbackInScope(TimerCallback callback, object state, object timer)
+        {
+            // A timer that wasn't traced doesn't enter a scope, the same as the common case.
+            var scope = CausalityTrace.EnterScopeInternal(GetTrace(timer));
+            try
+            {
+                callback.Invoke(state);
+            }
+            catch (Exception e)
+            {
+                // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
+                ReportCaughtException(e, timer);
+            }
+            finally
+            {
+                scope.Dispose();
+            }
+        }
+
+        internal static void ReportRejection(object unhandledValue, object traceable)
         {
             if (unhandledValue is ICantHandleException ex)
             {
@@ -82,41 +231,63 @@ namespace Proto.Promises
                 return;
             }
 
+            ReportUnhandledValue(unhandledValue, GetTrace(traceable));
+        }
+
+        // For an unhandled value whose causality trace is not stored on a traceable object.
+        internal static void ReportUnhandledValue(object unhandledValue, CausalityTrace causalityTrace)
+        {
             if (unhandledValue == null)
             {
                 // unhandledValue is null, behave the same way .Net behaves if you throw null.
                 unhandledValue = new NullReferenceException();
             }
 
-            Type type = unhandledValue.GetType();
             Exception innerException = unhandledValue as Exception;
-            string message = innerException != null ? "An exception was not handled." : "A rejected value was not handled, type: " + type + ", value: " + unhandledValue.ToString();
+            string message = innerException != null
+                ? "An exception was not handled."
+                : $"A rejected value was not handled, type: {unhandledValue.GetType()}, value: {unhandledValue}";
 
-            ReportUnhandledException(new UnhandledExceptionInternal(unhandledValue, message + CausalityTraceMessage, GetFormattedStacktrace(traceable), innerException));
+            ReportUnhandledException(new UnhandledException(unhandledValue, message, causalityTrace, innerException));
         }
 
         internal static void ReportUnhandledException(UnhandledException exception)
         {
 #if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new StackTrace(1, true).ToString(), exception);
+            exception = new UnhandledException(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1), exception);
 #endif
             // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
             if (handler != null)
             {
-                handler.Invoke(exception);
+                try
+                {
+                    handler.Invoke(exception);
+                }
+                catch (Exception e)
+                {
+                    // The handler is called from the library's code (e.g. while a promise is completing), so its exception must not escape into it.
+                    // Instead, we report it the same way as if there was no handler.
+                    PostThrow(state => ((System.Runtime.ExceptionServices.ExceptionDispatchInfo) state).Throw(),
+                        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e));
+                }
                 return;
             }
 
-            // Otherwise, throw it in the ForegroundContext if it exists, or background if it doesn't.
+            PostThrow(e => { throw (UnhandledException) e; }, exception);
+        }
+
+        // Throws the exception in the ForegroundContext if it exists, or background if it doesn't.
+        private static void PostThrow(SendOrPostCallback throwCallback, object exception)
+        {
             SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
             if (synchronizationContext != null)
             {
-                synchronizationContext.Post(e => { throw (UnhandledException) e; }, exception);
+                synchronizationContext.Post(throwCallback, exception);
             }
             else
             {
-                ThreadPool.QueueUserWorkItem(e => { throw (UnhandledException) e; }, exception);
+                ThreadPool.QueueUserWorkItem(throwCallback.Invoke, exception);
             }
         }
 

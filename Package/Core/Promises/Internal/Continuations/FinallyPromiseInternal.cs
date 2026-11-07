@@ -35,7 +35,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -53,6 +53,9 @@ namespace Proto.Promises
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
 
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    // The scope is entered before the field is overwritten with the reject container.
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
@@ -77,10 +80,11 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                            RejectContainer = CreateRejectContainer(e, true, this);
                             state = Promise.State.Rejected;
                         }
                     }
+                    ExitTracedScope(scope);
                     HandleNextInternal(state);
                 }
             }
@@ -106,7 +110,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -116,6 +120,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal static Promise<TResult> New(Promise previous, Promise.State previousState, IRejectContainer previousRejectContainer, in TResult previousResult)
                 {
+                    // This doesn't invoke a callback, so it doesn't need the traced sentinel.
                     var promise = GetOrCreate();
                     promise.Reset();
                     promise._previousState = previousState;
@@ -146,6 +151,9 @@ namespace Proto.Promises
                     }
                     _firstContinue = false;
 
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    // The scope is entered before the field is overwritten with the reject container.
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
@@ -166,6 +174,7 @@ namespace Proto.Promises
                             {
                                 // Store the state until the returned promise is complete.
                                 _previousState = state;
+                                ExitTracedScope(scope);
                                 return;
                             }
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait, state);
@@ -185,10 +194,11 @@ namespace Proto.Promises
                         }
                         else
                         {
-                            RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                            RejectContainer = CreateRejectContainer(e, true, this);
                             state = Promise.State.Rejected;
                         }
                     }
+                    ExitTracedScope(scope);
                     HandleNextInternal(state);
                 }
 
@@ -217,7 +227,7 @@ namespace Proto.Promises
                     }
 
                     var exception = new InvalidReturnException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", string.Empty);
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, false, this);
                     return Promise.State.Rejected;
                 }
 

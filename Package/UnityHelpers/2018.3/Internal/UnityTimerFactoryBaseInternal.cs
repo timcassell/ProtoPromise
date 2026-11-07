@@ -110,7 +110,7 @@ namespace Proto.Timers
 
         [MethodImpl(InlineOption)]
         private void InvokeDirect()
-            => _callback.Invoke(_state);
+            => InvokeTimerCallback(_callback, _state, this);
 
         protected abstract void ChangeImpl(TimeSpan dueTime, TimeSpan period, int token);
 
@@ -136,7 +136,7 @@ namespace Proto.Timers
             long tm = (long) time.TotalMilliseconds;
             if (tm < -1 || tm > MaxSupportedTimeout)
             {
-                throw new Promises.ArgumentOutOfRangeException(paramName, GetFormattedStacktrace(3));
+                throw new Promises.ArgumentOutOfRangeException(paramName, GetFormattedStacktrace());
             }
             return (float) time.TotalSeconds;
         }

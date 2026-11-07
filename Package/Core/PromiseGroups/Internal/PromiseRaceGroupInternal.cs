@@ -430,11 +430,11 @@ namespace Proto.Promises
             => PromiseRefBase.RacePromiseGroup<T>.GetOrCreate(sourceCancelationRef, groupCancelationRef, cancelOnNonResolved, isResolved, result, cleanupCallback);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidRaceGroup(int skipFrames)
-            => throw new InvalidOperationException("The promise race group is invalid.", GetFormattedStacktrace(skipFrames + 1));
+        internal static void ThrowInvalidRaceGroup()
+            => throw new InvalidOperationException("The promise race group is invalid.", GetFormattedStacktrace());
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowAtLeastOneRaceGroup(int skipFrames)
-            => throw new InvalidOperationException("The promise race group must have at least one promise added to it.", GetFormattedStacktrace(skipFrames + 1));
+        internal static void ThrowAtLeastOneRaceGroup()
+            => throw new InvalidOperationException("The promise race group must have at least one promise added to it.", GetFormattedStacktrace());
     } // class Internal
 }

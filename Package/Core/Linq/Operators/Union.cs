@@ -35,7 +35,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Union<TSource, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             // If the TEqualityComparer is a reference type, we force it to use IEqualityComparer<TSource> instead of the concrete type for future type checks.
             // This check gets eliminated by the JIT.
@@ -85,7 +85,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Union<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             // If the TEqualityComparer is a reference type, we force it to use IEqualityComparer<TSource> instead of the concrete type for future type checks.
             // This check gets eliminated by the JIT.
@@ -129,8 +129,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -166,8 +166,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionBy(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -199,8 +199,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -236,8 +236,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> first, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionByAwait(first.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -269,8 +269,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -306,8 +306,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionBy(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -339,8 +339,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -376,8 +376,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> UnionBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredFirst, AsyncEnumerable<TSource> second, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.UnionByHelper<TKey>.UnionByAwait(configuredFirst.GetAsyncEnumerator(), second.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }

@@ -22,7 +22,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.Select(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -40,7 +40,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.Select(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -56,7 +56,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -74,7 +74,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -90,7 +90,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.Select(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -108,7 +108,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.Select(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -124,7 +124,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -142,7 +142,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -158,7 +158,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -176,7 +176,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -192,7 +192,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -210,7 +210,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -226,7 +226,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -244,7 +244,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, TResult> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -260,7 +260,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -278,7 +278,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> Select<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectHelper<TResult>.SelectWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }

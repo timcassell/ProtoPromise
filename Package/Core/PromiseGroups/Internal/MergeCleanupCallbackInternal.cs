@@ -20,7 +20,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
@@ -31,7 +31,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));
@@ -42,7 +42,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(onCleanup));
@@ -53,7 +53,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return GetOrCreate(promise, DelegateWrapper.Create(capturedValue, onCleanup));
@@ -82,8 +82,19 @@ namespace Proto.Promises
 
             internal abstract void Prepare();
             internal abstract Promise InvokeAndDispose();
-            internal abstract Promise InvokeAndDisposeImmediate();
             internal abstract void Dispose();
+
+            // The callback runs in the scope of where it was registered. The trace is taken before the callback is disposed.
+            // InvokeAndDisposeCore doesn't throw, so the scope doesn't need a finally block.
+            internal Promise InvokeAndDisposeImmediate()
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeInternal(GetTrace(this));
+                var promise = InvokeAndDisposeCore();
+                scope.Dispose();
+                return promise;
+            }
+
+            protected abstract Promise InvokeAndDisposeCore();
         }
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
@@ -115,6 +126,7 @@ namespace Proto.Promises
                 cb._owner = promise._ref;
                 cb._callback = callback;
                 cb._arg = promise._result;
+                SetCreatedStacktrace(cb);
                 return cb;
             }
 
@@ -159,7 +171,7 @@ namespace Proto.Promises
                 return Promise.Resolved();
             }
 
-            internal override Promise InvokeAndDisposeImmediate()
+            protected override Promise InvokeAndDisposeCore()
             {
                 ThrowIfInPool(this);
 

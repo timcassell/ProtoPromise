@@ -123,7 +123,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
+            ValidateArgument(continuation, nameof(continuation));
             var _ref = _promise._ref;
             if (_continuationOptions.IsSynchronous)
             {
@@ -140,7 +140,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -165,10 +166,10 @@ namespace Proto.Promises.CompilerServices
             asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct ConfiguredPromiseAwaiterVoid
 
@@ -236,7 +237,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
+            ValidateArgument(continuation, nameof(continuation));
             var _ref = _promise._ref;
             if (_continuationOptions.IsSynchronous)
             {
@@ -253,7 +254,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -278,10 +280,10 @@ namespace Proto.Promises.CompilerServices
             asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct ConfiguredPromiseAwaiter<T>
 
@@ -341,7 +343,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
+            ValidateArgument(continuation, nameof(continuation));
             var _ref = _promise._ref;
             if (_continuationOptions.IsSynchronous)
             {
@@ -358,7 +360,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -383,10 +386,10 @@ namespace Proto.Promises.CompilerServices
             asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct ConfiguredPromiseNoThrowAwaiterVoid
 
@@ -446,7 +449,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
+            ValidateArgument(continuation, nameof(continuation));
             var _ref = _promise._ref;
             if (_continuationOptions.IsSynchronous)
             {
@@ -463,7 +466,8 @@ namespace Proto.Promises.CompilerServices
                 _ref.OnCompleted(continuation, _continuationOptions.GetContinuationContext(), _promise._id);
                 return;
             }
-            Internal.ScheduleContextCallback(_continuationOptions.GetContinuationContext(), continuation,
+            // The promise is already complete, so it's scheduled where the awaiting function awaits, and it doesn't capture where it was scheduled, which is where it awaited.
+            Internal.ScheduleContextCallbackDirect(_continuationOptions.GetContinuationContext(), continuation,
                 obj => obj.UnsafeAs<Action>().Invoke(),
                 obj => obj.UnsafeAs<Action>().Invoke()
             );
@@ -488,10 +492,10 @@ namespace Proto.Promises.CompilerServices
             asyncPromiseRef.HookupAwaiterWithContext(_promise._ref, _promise._id, _continuationOptions.GetContinuationContext());
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct ConfiguredPromiseNoThrowAwaiter<T>
 } // namespace Proto.Promises.CompilerServices

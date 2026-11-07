@@ -7,6 +7,7 @@
 using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.Linq;
+using AsyncEnumerable = Proto.Promises.Linq.AsyncEnumerable; // .Net 10 added System.Linq.AsyncEnumerable.
 using System;
 using System.Collections.Generic;
 using System.Linq;

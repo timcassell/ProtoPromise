@@ -123,7 +123,7 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     return State != Promise.State.Pending;
                 }
@@ -133,7 +133,7 @@ namespace Proto.Promises
 
                 internal sealed override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     return this;
                 }
@@ -147,7 +147,7 @@ namespace Proto.Promises
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     MaybeDispose();
                 }

@@ -115,7 +115,7 @@ namespace ProtoPromise.Tests
 #else
                 Promise.Config.ObjectPoolingEnabled = true;
 #endif
-                Promise.Config.DebugCausalityTracer = Promise.TraceLevel.None; // Disabled because it makes the tests slow.
+                Proto.Diagnostics.CausalityTrace.IsEnabled = false; // Disabled because it makes the tests slow.
 
                 _stopwatch = Stopwatch.StartNew();
             }
@@ -146,6 +146,24 @@ namespace ProtoPromise.Tests
         {
             WaitForAllThreadsToCompleteAndGcCollect();
 
+            // A causality trace scope that was not exited would be in every trace that is captured on this thread afterwards,
+            // so we fail the test that left it, and exit it so that it's not in the traces of the tests that run after it.
+            // In DEBUG mode, the scope is also reported as not disposed when it's garbage collected, which may be during a later test.
+            var causalityTraces = Proto.Diagnostics.CausalityTrace.ts_traces;
+            int causalityScopeCount = causalityTraces?.Count ?? 0;
+            causalityTraces?.Clear();
+            // A test that changes the causality trace settings must restore them, even if it fails. If it didn't (e.g. a Unity coroutine test that timed out
+            // before its finally block ran), we fail the test that left them, and restore them so that the tests that run after it are not traced
+            // (which makes them slow, and disables object pooling).
+            bool causalityTracesWereEnabled = Proto.Diagnostics.CausalityTrace.IsEnabled;
+            Proto.Diagnostics.CausalityTrace.IsEnabled = false;
+            int causalityMaxDepth = Proto.Diagnostics.CausalityTrace.MaxDepth;
+            Proto.Diagnostics.CausalityTrace.MaxDepth = 128; // The default.
+            int causalityMaxOuterTraces = Proto.Diagnostics.CausalityTrace.MaxOuterTraces;
+            Proto.Diagnostics.CausalityTrace.MaxOuterTraces = 8; // The default.
+            bool awaitTracesWereEnabled = Promise.Config.AwaitTracesEnabled;
+            Promise.Config.AwaitTracesEnabled = false;
+
             Exception[] exceptions;
             lock (_uncaughtExceptions)
             {
@@ -164,6 +182,11 @@ namespace ProtoPromise.Tests
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             Internal.AssertAllObjectsReleased(spinForThreadPool);
 #endif
+            Assert.AreEqual(0, causalityScopeCount, "CausalityTrace scopes were not exited on the test thread.");
+            Assert.IsFalse(causalityTracesWereEnabled, "CausalityTrace.IsEnabled was not restored.");
+            Assert.AreEqual(128, causalityMaxDepth, "CausalityTrace.MaxDepth was not restored.");
+            Assert.AreEqual(8, causalityMaxOuterTraces, "CausalityTrace.MaxOuterTraces was not restored.");
+            Assert.IsFalse(awaitTracesWereEnabled, "Promise.Config.AwaitTracesEnabled was not restored.");
 
             s_expectedUncaughtRejectValue = null;
             LogProgress("Success");

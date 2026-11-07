@@ -155,7 +155,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.CompareExchange(ref _enumerableId, enumerableId + 1, enumerableId) != enumerableId)
                 {
-                    ThrowInvalidAsyncEnumerable(3);
+                    ThrowInvalidAsyncEnumerable();
                 }
             }
 
@@ -401,7 +401,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.CompareExchange(ref _enumerableId, enumerableId + 1, enumerableId) != enumerableId)
                 {
-                    ThrowInvalidAsyncEnumerable(3);
+                    ThrowInvalidAsyncEnumerable();
                 }
             }
 

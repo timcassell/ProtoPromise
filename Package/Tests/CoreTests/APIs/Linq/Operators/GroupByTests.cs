@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using AsyncEnumerable = Proto.Promises.Linq.AsyncEnumerable; // .Net 10 added System.Linq.AsyncEnumerable.
 using ProtoPromise.Tests.APIs.Collections;
 using System;
 using System.Collections;
@@ -769,7 +770,7 @@ namespace ProtoPromise.Tests.APIs.Linq
             Promise.Run(async () =>
             {
                 var ex = new Exception("Bang!");
-                var e = GroupBy(GetXs(ex).ToAsyncEnumerable(), configured, async, x => x, captureKey, equalityComparer: GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
+                var e = GroupBy(AsyncEnumerable.ToAsyncEnumerable(GetXs(ex)), configured, async, x => x, captureKey, equalityComparer: GetDefaultOrNullComparer<int>(withComparer)).GetAsyncEnumerator();
                 await TestHelper.AssertThrowsAsync(() => e.MoveNextAsync(), ex);
                 await e.DisposeAsync();
             }, SynchronizationOption.Synchronous)

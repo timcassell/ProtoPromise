@@ -3,7 +3,8 @@
 
 namespace System.Diagnostics
 {
-    // This doesn't actually do anything before .Net 6, this is just to make it so we don't need to #if NET6_0_OR_GREATER at every place the attribute is used.
+    // The runtime ignores this before .Net 6, but causality traces use it (by name) to hide frames (see CausalityTrace.IsStackTraceHidden).
+    // It also makes it so we don't need to #if NET6_0_OR_GREATER at every place the attribute is used.
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Struct, Inherited = false)]
     internal sealed class StackTraceHiddenAttribute : Attribute
     {

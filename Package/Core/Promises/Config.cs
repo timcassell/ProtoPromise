@@ -9,6 +9,7 @@
 
 using Proto.Timers;
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -18,22 +19,22 @@ namespace Proto.Promises
     partial struct Promise
     {
         /// <summary>
-        /// At what granularity should stack traces be captured when a promise is created or rejected. Higher values are more costly, but give more information for debugging purposes.
+        /// At what granularity should causality traces be captured in DEBUG mode.
         /// </summary>
+        /// <remarks>This enum is obsolete. You should instead use <see cref="Diagnostics.CausalityTrace.IsEnabled"/>.</remarks>
+        [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled, which also applies in RELEASE mode (guard it with #if DEBUG for the old behavior).", false), EditorBrowsable(EditorBrowsableState.Never)]
         public enum TraceLevel : byte
         {
             /// <summary>
-            /// Don't track any causality traces.
+            /// Don't capture causality traces.
             /// </summary>
             None,
             /// <summary>
-            /// Track causality only when Deferred.Reject is called.
+            /// Leaves <see cref="Diagnostics.CausalityTrace.IsEnabled"/> unchanged. Rejections are traced only while causality traces are enabled.
             /// </summary>
             Rejections,
             /// <summary>
-            /// Track causality when Deferred.Reject is called and every time a promise is created or a delegate is added to a promise (i.e. with .Then).
-            /// <para/>
-            /// NOTE: This can be extremely expensive, so you should only enable this if you ran into an error and you are not sure where it came from.
+            /// Capture causality traces (see <see cref="Diagnostics.CausalityTrace.IsEnabled"/>).
             /// </summary>
             All
         }
@@ -46,9 +47,14 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
+            // The fields have no initializers, so that the class has no static constructor. Otherwise, IL2CPP checks that the class is initialized
+            // where the fields are accessed, which includes hot paths (e.g. async methods read s_asyncFlowExecutionContextEnabled).
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
+            /// <remarks>
+            /// Objects are not pooled while <see cref="Diagnostics.CausalityTrace.IsEnabled"/> is <see langword="true"/>.
+            /// </remarks>
 #if PROMISE_DEBUG
             // Object pooling disabled in DEBUG mode to prevent thread race conditions when validating for circular awaits.
             public static bool ObjectPoolingEnabled
@@ -62,40 +68,50 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_objectPoolingEnabled;
-                [MethodImpl(Internal.InlineOption)]
-                set => s_objectPoolingEnabled = value;
+                get => !s_objectPoolingDisabled;
+                set
+                {
+                    s_lock.Enter();
+                    s_objectPoolingDisabled = !value;
+                    UpdateCombinedSettings();
+                    s_lock.Exit();
+                }
             }
-            private static bool s_objectPoolingEnabled = true; // Enabled by default.
+            // Inverted, so that pooling is enabled by default without an initializer.
+            private static bool s_objectPoolingDisabled;
 #endif
 
             /// <summary>
-            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's Stacktrace property.
+            /// Set how causality is traced in DEBUG mode. Causality traces are readable from an UnhandledException's StackTrace property.
             /// </summary>
+            /// <remarks>This property is obsolete. You should instead use <see cref="Diagnostics.CausalityTrace.IsEnabled"/>, which also applies in RELEASE mode.</remarks>
+            [Obsolete("Prefer Proto.Diagnostics.CausalityTrace.IsEnabled, which also applies in RELEASE mode (guard it with #if DEBUG for the old behavior).", false), EditorBrowsable(EditorBrowsableState.Never)]
+            public static TraceLevel DebugCausalityTracer
+            {
 #if PROMISE_DEBUG
-            public static TraceLevel DebugCausalityTracer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => s_debugCausalityTracer;
-                [MethodImpl(Internal.InlineOption)]
-                set => s_debugCausalityTracer = value;
-            }
-            private static TraceLevel s_debugCausalityTracer = TraceLevel.Rejections;
+                get => Diagnostics.CausalityTrace.IsEnabled ? TraceLevel.All : TraceLevel.None;
+                set
+                {
+                    // Rejections are always traced while causality traces are enabled, so Rejections leaves it unchanged.
+                    if (value != TraceLevel.Rejections)
+                    {
+                        Diagnostics.CausalityTrace.IsEnabled = value == TraceLevel.All;
+                    }
+                }
 #else
-            public static TraceLevel DebugCausalityTracer
-            {
-                [MethodImpl(Internal.InlineOption)]
-                get => default;
-                [MethodImpl(Internal.InlineOption)]
+                // This only applies in DEBUG mode, like it always did, so that it doesn't enable the expensive causality traces in RELEASE builds.
+                get => TraceLevel.None;
                 set { }
-            }
 #endif
+            }
 
             /// <summary>
             /// Uncaught rejections get routed through this delegate.
             /// </summary>
             /// <remarks>
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>,
+            /// or on the thread pool if neither is set.
+            /// If the delegate throws, its exception is thrown the same way.
             /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
@@ -147,18 +163,67 @@ namespace Proto.Promises
             {
                 [MethodImpl(Internal.InlineOption)]
                 get => s_asyncFlowExecutionContextEnabled;
-                [MethodImpl(Internal.InlineOption)]
                 set
                 {
                     if (!value)
                     {
                         ThrowCannotDisableAsyncFlow();
                     }
-                    s_asyncFlowExecutionContextEnabled = true;
+                    SetAsyncFlowExecutionContextEnabled(true);
                 }
             }
-            // Internal so that tests can disable it directly.
-            internal static bool s_asyncFlowExecutionContextEnabled;
+            private static bool s_asyncFlowExecutionContextEnabled;
+
+            // Internal so that tests can disable it.
+            internal static void SetAsyncFlowExecutionContextEnabled(bool value)
+            {
+                s_lock.Enter();
+                s_asyncFlowExecutionContextEnabled = value;
+                UpdateCombinedSettings();
+                s_lock.Exit();
+            }
+
+            /// <summary>
+            /// Should async <see cref="Promise"/> and async <see cref="Promise{T}"/> functions capture a causality trace where they await,
+            /// while <see cref="Diagnostics.CausalityTrace.IsEnabled"/> is <see langword="true"/>.
+            /// </summary>
+            /// <remarks>
+            /// When this is enabled, an async function that continues after an await runs inside the scope of where it awaited, so traces that are captured after the await
+            /// include what continued the function before that await, whatever it awaited (including awaitables that aren't ProtoPromise's, like <see cref="System.Threading.Tasks.Task"/>).
+            /// This is disabled by default, because it captures another trace for each await that doesn't complete synchronously,
+            /// usually at about the same location as the trace of the operation that it awaits.
+            /// <para/>
+            /// When this is toggled, the traces of where async functions that are still running awaited are not guaranteed to remain, or to be released.
+            /// </remarks>
+            public static bool AwaitTracesEnabled
+            {
+                [MethodImpl(Internal.InlineOption)]
+                get => s_awaitTracesEnabled;
+                set
+                {
+                    s_lock.Enter();
+                    s_awaitTracesEnabled = value;
+                    UpdateCombinedSettings();
+                    s_lock.Exit();
+                }
+            }
+            private static bool s_awaitTracesEnabled;
+
+            // AsyncFlowExecutionContextEnabled | (CausalityTrace.IsEnabled & AwaitTracesEnabled), so that async functions only check 1 field when they await
+            // (see PromiseRefBase.CaptureAwaitContextAndOrTrace).
+            internal static bool s_isAwaitCaptureEnabled;
+
+            // Must not be readonly.
+            // Held while the settings that the combined settings are computed from are set (including CausalityTrace.IsEnabled),
+            // so that sets on different threads can't leave a combined setting computed from an old value.
+            internal static Internal.SpinLocker s_lock;
+
+            // Called while s_lock is held, after a setting is written.
+            internal static void UpdateCombinedSettings()
+            {
+                Internal.s_isObjectPoolingDisabled = !ObjectPoolingEnabled | Diagnostics.CausalityTrace.IsEnabled;
+                s_isAwaitCaptureEnabled = s_asyncFlowExecutionContextEnabled | (Diagnostics.CausalityTrace.IsEnabled & s_awaitTracesEnabled);
+            }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowCannotDisableAsyncFlow()
@@ -170,7 +235,7 @@ namespace Proto.Promises
             public static TimerFactory DefaultTimerFactory
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_defaultTimeProvider;
+                get => DefaultTimerFactoryHolder.s_value;
                 [MethodImpl(Internal.InlineOption)]
                 set
                 {
@@ -178,10 +243,17 @@ namespace Proto.Promises
                     {
                         ThrowNullTimerFactory();
                     }
-                    s_defaultTimeProvider = value;
+                    DefaultTimerFactoryHolder.s_value = value;
                 }
             }
-            private static TimerFactory s_defaultTimeProvider = TimerFactory.System;
+            // The field is in its own class, so that its initializer doesn't give this class a static constructor.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class DefaultTimerFactoryHolder
+            {
+                internal static TimerFactory s_value = TimerFactory.System;
+            }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowNullTimerFactory()

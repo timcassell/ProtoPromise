@@ -25,8 +25,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return Race(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -39,9 +39,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return Race(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -54,10 +54,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return Race(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -70,7 +70,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Race(promises.GetGenericEnumerator());
         }
 
@@ -97,7 +97,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Race(promises.GetEnumerator());
         }
 
@@ -110,13 +110,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> Race<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 bool isResolved = false;
@@ -141,13 +141,13 @@ namespace Proto.Promises
                 return Resolved(result);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.RacePromise<T>.GetOrCreate();
                 promise.AddWaiter(p._ref, p._id);
                 while (promises.MoveNext())
                 {
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     bool resolved = p._ref == null;
                     if (!resolved)
                     {
@@ -177,8 +177,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return First(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -191,9 +191,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return First(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -206,10 +206,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return First(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -222,7 +222,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return First(promises.GetGenericEnumerator());
         }
 
@@ -249,7 +249,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return First(promises.GetEnumerator());
         }
 
@@ -262,13 +262,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T> First<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
                 if (!promises.MoveNext())
                 {
-                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace(1));
+                    throw new EmptyArgumentException(nameof(promises), "You must provide at least one element to Race.", Internal.GetFormattedStacktrace());
                 }
 
                 bool isResolved = false;
@@ -293,14 +293,14 @@ namespace Proto.Promises
                 return Resolved(result);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.FirstPromise<T>.GetOrCreate();
                 uint pendingCount = 1;
                 promise.AddWaiter(p._ref, p._id);
                 while (promises.MoveNext())
                 {
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     bool resolved = p._ref == null;
                     if (!resolved)
                     {
@@ -371,7 +371,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise<T>.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex(promises.GetGenericEnumerator());
         }
 
@@ -400,7 +400,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise<T>.Race or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> RaceWithIndex(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return RaceWithIndex(promises.GetEnumerator());
         }
 
@@ -458,7 +458,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise<T>.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex(promises.GetGenericEnumerator());
         }
 
@@ -487,7 +487,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.AppendResult(int) and Promise<T>.First or PromiseRaceGroup<(T, int)>", false), EditorBrowsable(EditorBrowsableState.Never)]
         public static Promise<(int winIndex, T result)> FirstWithIndex(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return FirstWithIndex(promises.GetEnumerator());
         }
 
@@ -530,8 +530,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return All(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
@@ -548,9 +548,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return All(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
@@ -568,10 +568,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<T> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return All(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
@@ -612,7 +612,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All(Promise<T>[] promises, IList<T> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return All(promises.GetGenericEnumerator(), valueContainer);
         }
 
@@ -627,7 +627,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All(IEnumerable<Promise<T>> promises, IList<T> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return All(promises.GetEnumerator(), valueContainer);
         }
 
@@ -642,7 +642,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<T>> All<TEnumerator>(TEnumerator promises, IList<T> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -684,7 +684,7 @@ namespace Proto.Promises
                 return Promise.Resolved(valueContainer);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
 
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
@@ -703,7 +703,7 @@ namespace Proto.Promises
                         valueContainer.Add(default);
                     }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref == null)
                     {
                         valueContainer[index] = p._result;
@@ -750,8 +750,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return AllSettled(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
@@ -767,9 +767,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
@@ -786,10 +786,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
@@ -828,7 +828,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise<T>[] promises, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return AllSettled(promises.GetGenericEnumerator(), valueContainer);
         }
 
@@ -842,7 +842,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise<T>> promises, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return AllSettled(promises.GetEnumerator(), valueContainer);
         }
 
@@ -856,7 +856,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -898,7 +898,7 @@ namespace Proto.Promises
                 return Promise.Resolved(valueContainer);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
 
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
@@ -917,7 +917,7 @@ namespace Proto.Promises
                         valueContainer.Add(default);
                     }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref == null)
                     {
                         valueContainer[index] = p._result;
@@ -950,7 +950,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         public static Promise<T> New(Action<Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, nameof(resolver), 1);
+            ValidateArgument(resolver, nameof(resolver));
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
@@ -967,7 +967,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously. If <paramref name="synchronizationOption"/> is <see cref="SynchronizationOption.Synchronous"/>, this value will be ignored.</param>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationOption synchronizationOption = SynchronizationOption.Synchronous, bool forceAsync = false)
         {
-            ValidateArgument(resolver, nameof(resolver), 1);
+            ValidateArgument(resolver, nameof(resolver));
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationOption, forceAsync));
         }
@@ -982,7 +982,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
 		public static Promise<T> New(Action<Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, nameof(resolver), 1);
+            ValidateArgument(resolver, nameof(resolver));
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<T>(resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
@@ -998,7 +998,7 @@ namespace Proto.Promises
         /// <param name="forceAsync">If true, forces the <paramref name="resolver"/> to be invoked asynchronously.</param>
         public static Promise<T> New<TCapture>(TCapture captureValue, Action<TCapture, Deferred> resolver, SynchronizationContext synchronizationContext, bool forceAsync = false)
         {
-            ValidateArgument(resolver, nameof(resolver), 1);
+            ValidateArgument(resolver, nameof(resolver));
 
             return Internal.PromiseRefBase.CallbackHelperResult<T>.New(DelegateWrapper.Create<TCapture, T>(captureValue, resolver), new ContinuationOptions(synchronizationContext, forceAsync));
         }
@@ -1015,9 +1015,9 @@ namespace Proto.Promises
         /// </summary>
         public static Promise<T> Rejected<TReject>(TReject reason)
         {
-            var deferred = NewDeferred();
-            deferred.Reject(reason);
-            return deferred.Promise;
+            var promise = Internal.PromiseRefBase.DeferredPromise<T>.GetOrCreate();
+            promise.RejectCreated(reason);
+            return new Promise<T>(promise, promise.Id);
         }
 
         /// <summary>

@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -100,6 +101,31 @@ namespace Proto.Promises
                         obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
                     );
 
+                private void ScheduleContinuationOnContextDirect()
+                    => ScheduleContextCallbackDirect(_synchronizationContext, this,
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext(),
+                        obj => obj.UnsafeAs<ConfiguredPromise<TResult>>().HandleFromContext()
+                    );
+
+                // An await is scheduled where it awaited, which is only captured by await traces (see Promise.Config.AwaitTracesEnabled),
+                // and if the waiter was just created (e.g. by Then), its trace already shows where it was scheduled, so we don't capture it again.
+                // Otherwise (e.g. a callback promise adopting this, or a waiter without a trace), we capture where it was scheduled.
+                private void ScheduleContinuationOnContextWhenHookedUp(HandleablePromiseBase waiter)
+                {
+                    if (!CausalityTrace.IsEnabled || waiter is IAwaitWaiter)
+                    {
+                        ScheduleContinuationOnContextDirect();
+                        return;
+                    }
+                    var waiterTrace = GetTrace(waiter);
+                    if (waiterTrace == null || CausalityTrace.IsCurrentScope(waiterTrace))
+                    {
+                        ScheduleContinuationOnContext();
+                        return;
+                    }
+                    ScheduleContinuationOnContextDirect();
+                }
+
                 [MethodImpl(InlineOption)]
                 private void HandleFromContext()
                     => HandleNextInternal(_tempState);
@@ -150,13 +176,13 @@ namespace Proto.Promises
                     }
 
                     previousWaiter = PendingAwaitSentinel.s_instance;
-                    ScheduleContinuationOnContext();
+                    ScheduleContinuationOnContextWhenHookedUp(waiter);
                     return null; // It doesn't matter what we return since previousWaiter is set to PendingAwaitSentinel.s_instance.
                 }
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     // Make sure the continuation executes on the synchronization context.
                     if (GetShouldContinueImmediately()
@@ -173,11 +199,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase, ITraceable
+            private sealed class ConfiguredAsyncGenericContinuer : HandleablePromiseBase, IAwaitWaiter
             {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
                 private Action _continuation;
                 private SynchronizationContext _context;
 
@@ -207,7 +230,6 @@ namespace Proto.Promises
                     continuer._next = null;
                     continuer._continuation = continuation;
                     continuer._context = context;
-                    SetCreatedStacktrace(continuer, 3);
                     return continuer;
                 }
 
@@ -219,6 +241,8 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                // The awaiting function (e.g. an async Task function) isn't traced, so this doesn't capture where it awaited, the same as an async Promise function
+                // without await traces (see Promise.Config.AwaitTracesEnabled). It continues in the scope of where it was scheduled, which is what completed the promise.
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
@@ -230,13 +254,22 @@ namespace Proto.Promises
                     );
                 }
 
+                // The promise completed before this was added as its waiter, so it's scheduled where the awaiting function awaits,
+                // and it doesn't capture where it was scheduled, which is where it awaited.
+                internal void HandleAfterCompleted()
+                {
+                    ThrowIfInPool(this);
+                    ScheduleContextCallbackDirect(_context, this,
+                        obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext(),
+                        obj => obj.UnsafeAs<ConfiguredAsyncGenericContinuer>().HandleFromContext()
+                    );
+                }
+
                 private void HandleFromContext()
                 {
                     ThrowIfInPool(this);
                     var callback = _continuation;
-#if PROMISE_DEBUG
-                    SetCurrentInvoker(this);
-#else
+#if !PROMISE_DEBUG
                     Dispose();
 #endif
                     try
@@ -246,10 +279,9 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                        ReportRejection(e, this);
+                        ReportCaughtException(e, this);
                     }
 #if PROMISE_DEBUG
-                    ClearCurrentInvoker();
                     Dispose();
 #endif
                 }

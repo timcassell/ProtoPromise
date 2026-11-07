@@ -7,8 +7,10 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -148,22 +150,55 @@ namespace Proto.Promises
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode]
+    [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    public abstract class UnhandledException : Exception
+    public class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
     {
         private readonly object _value;
-        private readonly string _stackTrace;
+        private readonly CausalityTrace _causalityTrace;
 
-        internal UnhandledException(object value, string message, string stackTrace, Exception innerException) : base(message, innerException)
+        internal UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
+            : base(GetMessage(message, causalityTrace), innerException)
         {
             _value = value;
-            _stackTrace = stackTrace;
+            _causalityTrace = causalityTrace;
         }
 
-        public override string StackTrace => _stackTrace;
+        private static string GetMessage(string message, CausalityTrace causalityTrace)
+            => causalityTrace != null ? $"{message} -- This exception's StackTrace contains the causality trace of the rejection (the async operations that led to it)."
+            : !CausalityTrace.IsEnabled ? $"{message} -- Set Proto.Diagnostics.CausalityTrace.IsEnabled = true to get a causality trace."
+            // Causality traces are enabled, but this rejection has no trace.
+#if PROMISE_DEBUG
+            : $"{message} -- No causality trace was captured. CausalityTrace.IsEnabled may have been set after the operation was started."
+#else
+            : $"{message} -- No causality trace was found. Causality traces are not always available in RELEASE mode (for example, objects reported from finalizers on some runtimes). Enable DEBUG mode for reliable causality traces."
+#endif
+            ;
+
+
+        public override string StackTrace => _causalityTrace?.ToString();
 
         public object Value => _value;
+
+        /// <summary>
+        /// The causality trace of the rejection, or <see langword="null"/> if causality traces were disabled (see <see cref="CausalityTrace.IsEnabled"/>) or no trace was captured.
+        /// </summary>
+        public CausalityTrace CausalityTrace => _causalityTrace;
+
+        void Internal.ICantHandleException.ReportUnhandled(object traceable)
+            => Internal.ReportUnhandledException(this);
+
+        void Internal.IRejectContainer.ReportUnhandled()
+            => Internal.ReportUnhandledException(this);
+
+        ExceptionDispatchInfo Internal.IRejectContainer.GetExceptionDispatchInfo()
+            => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
+
+        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(object traceable)
+            => this;
+
+        Exception Internal.IRejectContainer.GetValueAsException()
+            => Value as Exception ?? this;
     }
 
     /// <summary>
@@ -199,15 +234,15 @@ namespace Proto.Promises
 
         protected RethrowException() { }
 
-        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(Internal.ITraceable traceable)
+        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(object traceable)
         {
 #if PROMISE_DEBUG
-            string stacktrace = Internal.FormatStackTrace(new StackTrace[1] { new StackTrace(this, true) });
+            string stacktrace = CausalityTrace.FormatStackTrace(new StackTrace(this, true));
 #else
             string stacktrace = new StackTrace(this, true).ToString();
 #endif
             Exception exception = new InvalidOperationException("RethrowException is only valid in promise onRejected callbacks.", stacktrace);
-            return Internal.RejectionContainerException.Create(exception, int.MinValue, null, traceable);
+            return Internal.ExceptionRejectionContainer.Create(exception, false, traceable);
         }
     }
 

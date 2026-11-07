@@ -24,8 +24,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return All(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -41,9 +41,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return All(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -60,10 +60,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return All(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -77,7 +77,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return All(promises.GetGenericEnumerator());
         }
 
@@ -106,7 +106,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return All(promises.GetEnumerator());
         }
 
@@ -120,7 +120,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise All<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -137,14 +137,14 @@ namespace Proto.Promises
                 return Resolved();
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
                 var promise = Internal.PromiseRefBase.GetOrCreateAllPromiseVoid();
                 uint pendingCount = 1;
                 promise.AddWaiter(p._ref, p._id);
                 while (promises.MoveNext())
                 {
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref != null)
                     {
                         checked { ++pendingCount; }
@@ -295,8 +295,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<T1> Merge<T1>(Promise<T1> promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             if (promise2._ref == null)
             {
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -365,8 +365,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
 
             (T1, T2) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetTwo<T1, T2>());
@@ -384,9 +384,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2)> Merge<T1, T2>(Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (T1, T2) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetTwo<T1, T2>());
@@ -444,9 +444,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (T1, T2, T3) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetThree<T1, T2, T3>());
@@ -465,10 +465,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3)> Merge<T1, T2, T3>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (T1, T2, T3) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetThree<T1, T2, T3>());
@@ -530,10 +530,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (T1, T2, T3, T4) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
@@ -553,11 +553,11 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4)> Merge<T1, T2, T3, T4>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (T1, T2, T3, T4) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFour<T1, T2, T3, T4>());
@@ -623,11 +623,11 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (T1, T2, T3, T4, T5) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
@@ -648,12 +648,12 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5)> Merge<T1, T2, T3, T4, T5>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (T1, T2, T3, T4, T5) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetFive<T1, T2, T3, T4, T5>());
@@ -723,12 +723,12 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (T1, T2, T3, T4, T5, T6) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
@@ -750,13 +750,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6)> Merge<T1, T2, T3, T4, T5, T6>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (T1, T2, T3, T4, T5, T6) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSix<T1, T2, T3, T4, T5, T6>());
@@ -830,13 +830,13 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (T1, T2, T3, T4, T5, T6, T7) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());
@@ -859,14 +859,14 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(T1, T2, T3, T4, T5, T6, T7)> Merge<T1, T2, T3, T4, T5, T6, T7>(Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7, Promise promise8)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
-            ValidateArgument(promise8, nameof(promise8), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
+            ValidateArgument(promise8, nameof(promise8));
 
             (T1, T2, T3, T4, T5, T6, T7) value = default;
             var merger = Internal.CreateMergePreparer(ref value, MergeResultFuncs.GetSeven<T1, T2, T3, T4, T5, T6, T7>());

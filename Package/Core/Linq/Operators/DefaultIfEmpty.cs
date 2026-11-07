@@ -39,7 +39,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements of the <paramref name="source"/> sequence or the result of the <paramref name="defaultValueRetriever"/> if the <paramref name="source"/> sequence is empty.</returns>
         public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource>(this AsyncEnumerable<TSource> source, Func<Promise<TSource>> defaultValueRetriever)
         {
-            ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
+            ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever));
 
             return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), DelegateWrapper.Create(defaultValueRetriever));
         }
@@ -55,7 +55,7 @@ namespace Proto.Promises.Linq
         /// <returns>An <see cref="AsyncEnumerable{T}"/> that contains the elements of the <paramref name="source"/> sequence or the result of the <paramref name="defaultValueRetriever"/> if the <paramref name="source"/> sequence is empty.</returns>
         public static AsyncEnumerable<TSource> DefaultIfEmpty<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, Promise<TSource>> defaultValueRetriever)
         {
-            ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever), 1);
+            ValidateArgument(defaultValueRetriever, nameof(defaultValueRetriever));
 
             return DefaultIfEmptyHelper.DefaultIfEmpty(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, defaultValueRetriever));
         }

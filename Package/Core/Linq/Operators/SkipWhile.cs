@@ -21,7 +21,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -38,7 +38,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhile(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -53,7 +53,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -70,7 +70,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -86,7 +86,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, int, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -104,7 +104,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -120,7 +120,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, int, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -138,7 +138,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -153,7 +153,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -170,7 +170,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhile(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -185,7 +185,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -202,7 +202,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -218,7 +218,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -236,7 +236,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -252,7 +252,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -270,7 +270,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static AsyncEnumerable<TSource> SkipWhile<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return Internal.SkipWhileHelper.SkipWhileWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }

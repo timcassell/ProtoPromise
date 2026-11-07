@@ -20,8 +20,8 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return Each(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -33,9 +33,9 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return Each(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -47,10 +47,10 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return Each(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -62,7 +62,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(params Promise[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Each(promises.GetGenericEnumerator());
         }
 
@@ -87,7 +87,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Each(promises.GetEnumerator());
         }
 
@@ -99,7 +99,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -112,7 +112,7 @@ namespace Proto.Promises
                 do
                 {
                     var promise = promises.Current;
-                    ValidateElement(promise, "promises", 1);
+                    ValidateElement(promise, "promises");
                     if (promise._ref == null)
                     {
                         eachPromise.AddResult(ResultContainer.Resolved);
@@ -204,8 +204,8 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return Each(Internal.GetEnumerator(promise1, promise2));
         }
 
@@ -217,9 +217,9 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return Each(Internal.GetEnumerator(promise1, promise2, promise3));
         }
 
@@ -231,10 +231,10 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(Promise<T> promise1, Promise<T> promise2, Promise<T> promise3, Promise<T> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return Each(Internal.GetEnumerator(promise1, promise2, promise3, promise4));
         }
 
@@ -246,7 +246,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(params Promise<T>[] promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Each(promises.GetGenericEnumerator());
         }
 
@@ -271,7 +271,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each(IEnumerable<Promise<T>> promises)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return Each(promises.GetEnumerator());
         }
 
@@ -283,7 +283,7 @@ namespace Proto.Promises
         /// </remarks>
         public static AsyncEnumerable<ResultContainer> Each<TEnumerator>(TEnumerator promises) where TEnumerator : IEnumerator<Promise<T>>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -296,7 +296,7 @@ namespace Proto.Promises
                 do
                 {
                     var promise = promises.Current;
-                    ValidateElement(promise, "promises", 1);
+                    ValidateElement(promise, "promises");
                     if (promise._ref == null)
                     {
                         eachPromise.AddResult(promise._result);

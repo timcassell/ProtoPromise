@@ -123,7 +123,7 @@ namespace Proto.Promises
                     {
                         if (oldId == id + 1)
                         {
-                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("AsyncEnumerator.DisposeAsync: the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                         }
                         // IAsyncDisposable.DisposeAsync must not throw if it's called multiple times, according to MSDN documentation.
                         return Promise.Resolved();
@@ -190,7 +190,7 @@ namespace Proto.Promises
                 {
                     if (Interlocked.CompareExchange(ref _enumerableId, id + 1, id) != id)
                     {
-                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("AsyncEnumerable.MoveNextAsync: instance is not valid, or the previous MoveNextAsync operation is still pending.", GetFormattedStacktrace());
                     }
 
                     if (!_isStarted)
@@ -273,7 +273,7 @@ namespace Proto.Promises
                         return;
                     }
 
-                    RejectContainer = CreateRejectContainer(exception, int.MinValue, null, this);
+                    RejectContainer = CreateRejectContainer(exception, false, this);
                     HandleNextInternal(Promise.State.Rejected);
                 }
 
@@ -359,7 +359,7 @@ namespace Proto.Promises
             => PromiseRefBase.EachPromiseGroup<Promise.ResultContainer>.GetOrCreate(cancelationRef, Promise.MergeResultFuncs.GetMergeResultVoid());
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidEachGroup(int skipFrames)
-            => throw new InvalidOperationException("The promise each group is invalid.", GetFormattedStacktrace(skipFrames + 1));
+        internal static void ThrowInvalidEachGroup()
+            => throw new InvalidOperationException("The promise each group is invalid.", GetFormattedStacktrace());
     } // class Internal
 }

@@ -33,7 +33,7 @@ namespace Proto.Promises
             {
                 if (Interlocked.CompareExchange(ref _id, id + 1, id) != id)
                 {
-                    ThrowInvalidAsyncEnumerable(3);
+                    ThrowInvalidAsyncEnumerable();
                 }
             }
 
@@ -42,7 +42,7 @@ namespace Proto.Promises
                 int newId = id + 1;
                 if (Interlocked.CompareExchange(ref id, newId, id) != id)
                 {
-                    ThrowInvalidAsyncEnumerable(2);
+                    ThrowInvalidAsyncEnumerable();
                 }
                 return new AsyncEnumerable<TSource>(this, newId);
             }

@@ -75,7 +75,7 @@ namespace Proto.Promises
         public PromiseEachGroup Add(Promise promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -85,14 +85,14 @@ namespace Proto.Promises
             {
                 if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
                 {
-                    Internal.ThrowInvalidEachGroup(1);
+                    Internal.ThrowInvalidEachGroup();
                 }
 
                 group = Internal.GetOrCreateEachPromiseGroup(cancelationRef);
             }
             else if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidEachGroup(1);
+                Internal.ThrowInvalidEachGroup();
             }
 
             checked { ++totalCount; }
@@ -126,13 +126,13 @@ namespace Proto.Promises
             {
                 if (cancelationRef?.TryDispose(_cancelationId) != true)
                 {
-                    Internal.ThrowInvalidEachGroup(1);
+                    Internal.ThrowInvalidEachGroup();
                 }
                 return AsyncEnumerable<Promise.ResultContainer>.Empty();
             }
             else if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidEachGroup(1);
+                Internal.ThrowInvalidEachGroup();
             }
 
             group.MarkReady(suppressUnobservedRejections, pendingCount, totalCount);
@@ -204,7 +204,7 @@ namespace Proto.Promises
         public PromiseEachGroup<T> Add(Promise<T> promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var cancelationRef = _cancelationRef;
             var group = _group;
@@ -214,14 +214,14 @@ namespace Proto.Promises
             {
                 if (cancelationRef?.TryIncrementSourceId(_cancelationId) != true)
                 {
-                    Internal.ThrowInvalidEachGroup(1);
+                    Internal.ThrowInvalidEachGroup();
                 }
 
                 group = Internal.GetOrCreateEachPromiseGroup<T>(cancelationRef);
             }
             else if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidEachGroup(1);
+                Internal.ThrowInvalidEachGroup();
             }
 
             checked { ++totalCount; }
@@ -255,13 +255,13 @@ namespace Proto.Promises
             {
                 if (cancelationRef?.TryDispose(_cancelationId) != true)
                 {
-                    Internal.ThrowInvalidEachGroup(1);
+                    Internal.ThrowInvalidEachGroup();
                 }
                 return AsyncEnumerable<Promise<T>.ResultContainer>.Empty();
             }
             else if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidEachGroup(1);
+                Internal.ThrowInvalidEachGroup();
             }
 
             group.MarkReady(suppressUnobservedRejections, pendingCount, totalCount);

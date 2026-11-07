@@ -35,7 +35,7 @@ namespace Proto.Timers
             {
                 if (callback == null)
                 {
-                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", GetFormattedStacktrace(1));
+                    throw new Promises.ArgumentNullException(nameof(callback), "callback may not be null", GetFormattedStacktrace());
                 }
                 var timer = TimeProviderTimerFactoryTimer.GetOrCreate(this, callback, state, dueTime, period);
                 return new Timer(timer, timer.Version);
@@ -277,7 +277,8 @@ namespace Proto.Timers
                 [MethodImpl(InlineOption)]
                 private void InvokeDirect()
                 {
-                    _callback.Invoke(_state);
+                    InvokeTimerCallback(_callback, _state, this);
+                    // Released even if the callback threw (InvokeTimerCallback reports it), so that DisposeAsync still completes.
                     Release();
                 }
 
