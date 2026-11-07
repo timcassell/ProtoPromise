@@ -439,7 +439,7 @@ namespace Proto.Diagnostics
         // For an async function's trace, which is captured where it first awaits in the optimized async mode (see AsyncPromiseRef.TracedAsyncPromiseRefMachine).
         // The innermost visible frame (the async function, where it awaits) is dropped (see GetFrameAfterAsyncFunction),
         // so that the trace starts where it was called, like in the non-optimized mode, which captures it before the async function's body runs
-        // (except that on runtimes older than .Net 8, the runtime's frames that started it on its ExecutionContext are before it).
+        // (except that while the ExecutionContext flows, the runtime's frames that started it on its ExecutionContext are before it).
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static CausalityTrace CaptureWithoutInnermostVisibleFrame(Type asyncStateMachineType)
             => s_isEnabled ? new CausalityTrace(1, asyncStateMachineType) : null;
@@ -979,7 +979,7 @@ namespace Proto.Diagnostics
 
         // Gets the index of the frame after the innermost visible frame, if it's the async function (where it first awaits, see CaptureWithoutInnermostVisibleFrame),
         // so that the next visible frame is the method that the compiler generated for the async function (or the method that called it, if that was inlined into it).
-        // On runtimes older than .Net 8, while the ExecutionContext flows, the runtime's async method builder's Start methods that started the async function are between them.
+        // While the ExecutionContext flows, the runtime's async method builder's Start methods that started the async function are between them.
         // Nothing is dropped if the innermost visible frame isn't the async function (e.g. if it was inlined into the method that called it).
         // It's identified by its state machine type, because the innermost visible frame may be another async function
         // (e.g. the async function that called it, if the method that the compiler generated for it was also inlined).

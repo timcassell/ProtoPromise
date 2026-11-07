@@ -1310,7 +1310,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool awaitTraces)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async function with the runtime's async method builder on runtimes older than .Net 8, whose frames are between the async function and where it was called.
+            // Enabled runs the async function with the runtime's async method builder, whose frames are between the async function and where it was called.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             Promise.Config.AwaitTracesEnabled = awaitTraces;
@@ -1362,7 +1362,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            // Enabled runs the async iterator with the runtime's async method builder on runtimes older than .Net 8, whose frames are between the async iterator and the code that started it.
+            // Enabled runs the async iterator with the runtime's async method builder, whose frames are between the async iterator and the code that started it.
             bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
             Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
             CausalityTrace.IsEnabled = true;
@@ -1391,13 +1391,10 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
-        // On runtimes older than .Net 8, while the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
+        // While the ExecutionContext flows, ProtoPromise runs an async function with the runtime's async method builder,
         // whose Start frames are between the async function and the method that the compiler generated for it, in traces captured before it first awaits
         // (including its trace of where it was called, which is captured where it first awaits in the optimized mode).
         private static System.Diagnostics.StackFrame[] WithoutRuntimeAsyncMethodBuilderFrames(System.Diagnostics.StackFrame[] frames)
-#if NET8_0_OR_GREATER
-            => frames;
-#else
             => frames.Where(frame =>
             {
                 var method = frame.GetMethod();
@@ -1407,50 +1404,6 @@ namespace ProtoPromise.Tests.APIs
                     || (typeName != "System.Runtime.CompilerServices.AsyncMethodBuilderCore"
                         && !typeName.StartsWith("System.Runtime.CompilerServices.AsyncTaskMethodBuilder", System.StringComparison.Ordinal));
             }).ToArray();
-#endif
-
-#if NET8_0_OR_GREATER
-        [Test]
-        public void CausalityTraceCapture_InAnAsyncFunctionOnItsExecutionContext_DoesNotIncludeTheRuntimeCodeThatRunsItOnIt()
-        {
-            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            bool wasFlowExecutionContextEnabled = Promise.Config.AsyncFlowExecutionContextEnabled;
-            Promise.Config.SetAsyncFlowExecutionContextEnabled(true);
-            CausalityTrace.IsEnabled = true;
-            try
-            {
-                var deferred = Promise.NewDeferred();
-                CausalityTrace startTrace = null;
-                CausalityTrace continuationTrace = null;
-                async Promise Func()
-                {
-                    startTrace = CausalityTrace.Capture();
-                    await deferred.Promise;
-                    continuationTrace = CausalityTrace.Capture();
-                }
-                Func().Forget();
-                deferred.Resolve();
-
-                // Only the frames above this method are checked, because the thread that runs it may have started it with ExecutionContext.Run too.
-                bool HasRuntimeFrame(System.Diagnostics.StackFrame[] frames) => frames
-                    .TakeWhile(frame => frame.GetMethod().Name != nameof(CausalityTraceCapture_InAnAsyncFunctionOnItsExecutionContext_DoesNotIncludeTheRuntimeCodeThatRunsItOnIt))
-                    .Any(frame =>
-                    {
-                        var declaringType = frame.GetMethod().DeclaringType;
-                        return declaringType == typeof(System.Threading.ExecutionContext)
-                            || declaringType?.FullName == "System.Runtime.CompilerServices.AsyncMethodBuilderCore"
-                            || declaringType?.FullName?.StartsWith("System.Runtime.CompilerServices.AsyncTaskMethodBuilder", System.StringComparison.Ordinal) == true;
-                    });
-                Assert.IsFalse(HasRuntimeFrame(startTrace.GetFrames()), startTrace.ToString());
-                Assert.IsFalse(HasRuntimeFrame(continuationTrace.GetFrames()), continuationTrace.ToString());
-            }
-            finally
-            {
-                CausalityTrace.IsEnabled = false;
-                Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
-            }
-        }
-#endif
 
         [Test]
         public void CausalityTraceCapture_InScopesWhoseTracesContainEachOther_HasOnlyTheOuterTraceThatContainsTheOther(
