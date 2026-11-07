@@ -157,7 +157,7 @@ namespace Proto.Promises
         private readonly object _value;
         private readonly CausalityTrace _causalityTrace;
 
-        public UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
+        internal UnhandledException(object value, string message, CausalityTrace causalityTrace, Exception innerException)
             : base(GetMessage(message, causalityTrace), innerException)
         {
             _value = value;
