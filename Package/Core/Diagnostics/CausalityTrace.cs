@@ -231,7 +231,7 @@ namespace Proto.Diagnostics
         /// If operations were nested, this is the innermost operation, and the others are in <see cref="OuterTraces"/>.
         /// <para/>
         /// An operation whose trace was captured on the same thread by a call that was still running (e.g. <c>Promise.New</c>, which invokes its callback) is skipped,
-        /// because its frames are already in <see cref="StackTrace"/> (or in one of the <see cref="OuterTraces"/>), unless it has <see cref="Repeats"/>.
+        /// because its frames are already in <see cref="StackTrace"/>, unless it has <see cref="Repeats"/>.
         /// Its cause is this trace's cause instead, and its outer traces are kept. This compares what is printed (the methods and lines of the frames),
         /// so a trace that was captured by an earlier call on the same line (or in the same method, if line numbers are not available) may also be skipped.
         /// An operation whose trace was captured at the same location as this trace is folded into this trace (see <see cref="Repeats"/>).
@@ -257,6 +257,9 @@ namespace Proto.Diagnostics
         /// (or in the same method, if line numbers are not available either) may also be skipped, because it's printed like the outer frames of <see cref="StackTrace"/>.
         /// The outer traces of an operation that was skipped or folded into this trace (see <see cref="Previous"/>) are kept after this trace's own.
         /// At most <see cref="MaxOuterTraces"/> are kept.
+        /// <para/>
+        /// An outer trace whose outer frames are the frames of the <see cref="Previous"/> trace, captured on the same thread (e.g. where an async function first awaited,
+        /// whose outer frames are where it was called), is kept, but <see cref="ToString"/> only prints its other frames with it, because the <see cref="Previous"/> trace prints them.
         /// <para/>
         /// Like <see cref="Previous"/>, this is decided on a best-effort basis, and is meant for diagnostics, not for program logic.
         /// </remarks>
@@ -483,7 +486,7 @@ namespace Proto.Diagnostics
 
             // The previous trace may have been captured by a call that is still running (e.g. Promise.New, which invokes its callback),
             // in which case its frames are already in this trace, so it's skipped. Its outer traces are kept, so that they're not lost.
-            if (previous != null && previous.IsContainedBy(this, outerTraces))
+            if (previous != null && previous.IsContainedBy(this))
             {
                 outerTraces = AddOuterTraces(outerTraces, previous, maxOuterTraces, ref areOuterTracesTruncated);
                 _isTruncated = previous._isTruncated;
@@ -840,28 +843,12 @@ namespace Proto.Diagnostics
             => threadName == null ? otherThreadName == null && threadId == otherThreadId : threadName == otherThreadName;
 
         // Whether this trace's frames are already in the next trace that is captured on the same thread, so it adds nothing to it: its visible frames are
-        // the outermost visible frames of that trace, or of one of its outer traces (e.g. the trace of Promise.New, which invokes its callback,
-        // and the trace of an operation started in the callback, or an async function's trace, and where it scheduled its continuation before it returned).
+        // the outermost visible frames of that trace (e.g. the trace of Promise.New, which invokes its callback).
         // It's kept if it has repeats, which would be lost. Its outer traces are added to the next trace's (see AddOuterTraces).
-        private bool IsContainedBy(CausalityTrace next, CausalityTrace[] nextOuterTraces)
-        {
-            if (_repeats.Length != 0)
-            {
-                return false;
-            }
-            if (IsOuterPartOf(next, false))
-            {
-                return true;
-            }
-            foreach (var outerTrace in nextOuterTraces)
-            {
-                if (IsOuterPartOf(outerTrace, false))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        // It's also kept if its frames are only in one of the next trace's outer traces (e.g. an async function's trace, and where it first awaited),
+        // so that the chain keeps where the async function was called, and the outer trace prints only the frames that it doesn't share with it (see Printer.AppendTrace).
+        private bool IsContainedBy(CausalityTrace next)
+            => _repeats.Length == 0 && IsOuterPartOf(next, false);
 
         private bool IsOuterPartOf(CausalityTrace other, bool isSameCall)
             => GetOuterPart(this, other, isSameCall) == this;
@@ -1182,7 +1169,7 @@ namespace Proto.Diagnostics
         /// <para/>
         /// A trace's <see cref="Repeats"/> are printed after its stack trace with their threads and times, and its <see cref="OuterTraces"/> are printed after that,
         /// each indented one more level than the one before it (followed by <c>--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---</c>
-        /// if some were dropped to stay within <see cref="MaxOuterTraces"/>).
+        /// if some were dropped to stay within <see cref="MaxOuterTraces"/>). Only the frames of an outer trace that it doesn't share with the <see cref="Previous"/> trace are printed with it.
         /// Parts of the chain that repeat (e.g. a callback that registers itself again from another thread, or callbacks that register each other) are only printed once:
         /// a single repeated trace is printed with the others as its repeats, and a longer repeated part is printed between <c>--- #n Begin ---</c> and <c>--- #n End ---</c> markers,
         /// followed by <c>--- #n repeated N times: ... ---</c> with the threads and times of the repeats.

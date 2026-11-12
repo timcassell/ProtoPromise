@@ -45,6 +45,8 @@ namespace Proto.Diagnostics
             private readonly int[] _lineNumbers;
             private readonly int _hashCode;
 
+            internal int FrameCount => _methods.Length;
+
 #if NET6_0_OR_GREATER
             [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2026",
                 Justification = "GetVisibleFrames excludes frames whose method metadata was trimmed.")]
@@ -288,7 +290,7 @@ namespace Proto.Diagnostics
                 {
                     indent += MessageIndent;
                     AppendHeader(outerTrace, indent);
-                    AppendStackTrace(outerTrace, indent);
+                    AppendStackTrace(outerTrace, indent, GetFramesSharedWithPrevious(outerTrace, trace._previous));
                 }
                 if (trace._areOuterTracesTruncated)
                 {
@@ -311,7 +313,14 @@ namespace Proto.Diagnostics
                 _sb.AppendLine(" ---");
             }
 
-            private void AppendStackTrace(CausalityTrace trace, string indent)
+            // The number of outermost frames that an outer trace shares with the previous trace, which prints them (e.g. where an async function first awaited,
+            // which shares the frames of the async function's trace). It's the same rule as an outer trace that repeats the previous trace,
+            // which shares all of its frames, so it's not kept at all (see GetOuterTraces).
+            // It's compared by the traces' signatures, which are cached, and which the printer may have already created to find the repeated parts of the chain (see IsRepeat).
+            private static int GetFramesSharedWithPrevious(CausalityTrace outerTrace, CausalityTrace previous)
+                => previous != null && GetOuterPartBySignature(previous, outerTrace) == previous ? previous.GetSignature().FrameCount : 0;
+
+            private void AppendStackTrace(CausalityTrace trace, string indent, int sharedFrameCount = 0)
             {
                 var frames = trace.GetFrames();
                 if (frames.Length == 0)
@@ -320,10 +329,11 @@ namespace Proto.Diagnostics
                     _sb.Append(indent).Append(MessageIndent).AppendLine("--- All frames are hidden ---");
                     return;
                 }
-                foreach (var frame in frames)
+                // An outer trace has more frames than it shares with the previous trace (see GetOuterPart), so at least one frame is printed.
+                for (int i = 0, count = frames.Length - sharedFrameCount; i < count; i++)
                 {
                     _sb.Append(indent);
-                    AppendFrame(_sb, frame);
+                    AppendFrame(_sb, frames[i]);
                 }
             }
 

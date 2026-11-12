@@ -813,28 +813,16 @@ namespace ProtoPromise.Tests.APIs
 
                 Assert.IsNotNull(asyncTrace);
                 Assert.AreEqual(awaitTraces, firstAwaitTrace != null);
-#if PROTO_PROMISE_DEVELOPER_MODE // Developer mode doesn't hide internal frames, so where it first awaited doesn't contain the async promise's trace.
-                Assert.AreSame(asyncTrace, traceAfterFirstAwait.Previous);
-#else
-                if (!awaitTraces)
+                // Where it first awaited may contain where it was called, but the async promise's trace is still the cause
+                // (unless it's skipped without line numbers, see AssertPreviousTrace), and where it first awaited is an outer trace that only prints the frames that it doesn't share with it,
+                // unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod),
+                // or it's the async promise's trace (see the developer mode case below).
+                AssertPreviousTrace(asyncTrace, traceAfterFirstAwait);
+                if (firstAwaitTrace != null && firstAwaitTrace != asyncTrace && KeepsOuterTracesFromTheSameMethod)
                 {
-                    Assert.AreSame(asyncTrace, traceAfterFirstAwait.Previous);
+                    CollectionAssert.Contains(traceAfterFirstAwait.OuterTraces, firstAwaitTrace, traceAfterFirstAwait.ToString());
                 }
-                else
-                {
-                    // Where it first awaited contains where it was called, so the async promise's trace is skipped, and its cause is kept,
-                    // unless one of its hidden frames is printed with another function's name (see MayPrintHiddenFramesWithOtherNames).
-                    // Where it first awaited is printed in its place, unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
-                    if (!MayPrintHiddenFramesWithOtherNames || traceAfterFirstAwait.Previous != asyncTrace)
-                    {
-                        Assert.AreSame(asyncTrace.Previous, traceAfterFirstAwait.Previous, traceAfterFirstAwait.ToString());
-                    }
-                    if (KeepsOuterTracesFromTheSameMethod)
-                    {
-                        CollectionAssert.Contains(traceAfterFirstAwait.OuterTraces, firstAwaitTrace, traceAfterFirstAwait.ToString());
-                    }
-                }
-#endif
+                AssertCausalityTraceIsPrintedCorrectly(traceAfterFirstAwait, traceAfterFirstAwait.ToString());
                 Assert.AreSame(asyncTrace, traceAfterSecondAwait.Previous);
                 // Only the continuation that was scheduled on the context has where it was scheduled.
                 // The context runs it from this method (see KeepsOuterTracesFromTheSameMethod).
@@ -4102,13 +4090,16 @@ namespace ProtoPromise.Tests.APIs
                     CollectionAssert.IsEmpty(trace[0].OuterTraces, text);
                     AssertPreviousTraceIsFrom(trace[0], nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled));
                 }
-                // With await traces, where it awaited contains where it was called, so its own trace is skipped, and where it awaited is printed in its place,
-                // unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
-                else if (KeepsOuterTracesFromTheSameMethod)
+                // With await traces, where it awaited contains where it was called, which is still its cause, and where it awaited is an outer trace
+                // that only prints the frames that it doesn't share with it, unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
+                else
                 {
-                    Assert.IsNotNull(OuterTrace(trace[0]), text);
-                    Assert.IsTrue(ContainsMethod(OuterTrace(trace[0]), nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled)), text);
-                    Assert.IsNull(trace[0].Previous, text);
+                    AssertPreviousTraceIsFrom(trace[0], nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled));
+                    if (KeepsOuterTracesFromTheSameMethod)
+                    {
+                        Assert.IsNotNull(OuterTrace(trace[0]), text);
+                        Assert.IsTrue(ContainsMethod(OuterTrace(trace[0]), nameof(CausalityTraceCapture_AfterSwitchingToAContextAtTheFirstAwait_ItsCauseIsWhereTheAsyncFunctionWasCalled)), text);
+                    }
                 }
                 Assert.LessOrEqual(GetCausalityTraceDepth(trace[0]), 2, text);
                 AssertCausalityTraceIsPrintedCorrectly(trace[0], text);
@@ -4224,7 +4215,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
-        public void CausalityTraceCapture_TraceContainedByWhereTheCallbackWasScheduledFrom_IsSkippedAndItsOuterTracesAreKept(
+        public void CausalityTraceCapture_TraceContainedByWhereTheCallbackWasScheduledFrom_IsKeptAndTheOuterTracePrintsOnlyItsOwnFrames(
             [Values] bool containedHasAnOuterTrace)
         {
             CausalityTrace.IsEnabled = true;
@@ -4245,15 +4236,15 @@ namespace ProtoPromise.Tests.APIs
                     scope.Dispose();
                 }
 
-                // The contained trace is skipped, and its outer traces are kept after the trace's own.
+                // The contained trace is kept as the cause, with its own outer traces, and where the callback was scheduled from is an outer trace
+                // that only prints the frames that it doesn't share with it (see AssertCausalityTraceIsPrintedCorrectly).
                 var text = trace.ToString();
-                Assert.AreSame(other, trace.Previous, text);
-                Assert.AreEqual(containedHasAnOuterTrace ? 2 : 1, trace.OuterTraces.Count, text);
+                Assert.AreSame(contained, trace.Previous, text);
+                Assert.AreEqual(1, trace.OuterTraces.Count, text);
                 Assert.IsTrue(HasSameFrames(scheduledFrom, trace.OuterTraces[0]), text);
-                if (containedHasAnOuterTrace)
-                {
-                    Assert.AreSame(containedOuter, trace.OuterTraces[1], text);
-                }
+                // The outer trace shares the contained trace's frames, so the print check below only finds it if they're left off.
+                Assert.AreEqual(contained.GetFrames().Length, GetFramesSharedWithPrevious(trace.OuterTraces[0], contained), text);
+                CollectionAssert.AreEqual(containedHasAnOuterTrace ? new[] { containedOuter } : new CausalityTrace[0], contained.OuterTraces, text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
             }
             finally
@@ -7517,6 +7508,7 @@ namespace ProtoPromise.Tests.APIs
 
         // Repeated blocks must be labeled once, and printed before they are repeated.
         // Every stack trace in the chain, and every one of their outer traces (indented one more level than the one before it), must be printed (as a whole),
+        // except for the outermost frames that an outer trace shares with the previous trace, which prints them,
         // and the truncation must be printed if the chain is truncated.
         private static void AssertCausalityTraceIsPrintedCorrectly(CausalityTrace trace, string text)
         {
@@ -7556,7 +7548,7 @@ namespace ProtoPromise.Tests.APIs
                 foreach (var outer in current.OuterTraces)
                 {
                     indent += "   ";
-                    AssertStackTraceIsPrinted(outer, textLines, text, indent);
+                    AssertStackTraceIsPrinted(outer, textLines, text, indent, GetFramesSharedWithPrevious(outer, current.Previous));
                     // Outer traces don't have their own histories, so that a chain of causes is only printed once.
                     Assert.IsNull(outer.Previous, text);
                     CollectionAssert.IsEmpty(outer.OuterTraces, text);
@@ -7573,10 +7565,47 @@ namespace ProtoPromise.Tests.APIs
             Assert.LessOrEqual(timeCount, chain.Sum(current => 4 + current.OuterTraces.Count + current.Repeats.Count * 2), text);
         }
 
-        private static void AssertStackTraceIsPrinted(CausalityTrace trace, string[] textLines, string text, string indent)
+        // The number of outermost frames that the outer trace shares with the previous trace, which has fewer frames, on the same thread.
+        // The innermost frame of the previous trace is compared by its method and line, because the call may have moved on since it was captured
+        // (e.g. an async function's trace, captured at its builder's Create call, and where it first awaited, captured in its Start call), so it may be printed differently
+        // (e.g. with its IL offset, on Mono). The other frames are compared by their IL offsets too.
+        private static int GetFramesSharedWithPrevious(CausalityTrace outer, CausalityTrace previous)
         {
+            if (previous == null || previous.ThreadId != outer.ThreadId)
+            {
+                return 0;
+            }
+            var outerFrames = outer.GetFrames();
+            var previousFrames = previous.GetFrames();
+            if (previousFrames.Length == 0 || previousFrames.Length >= outerFrames.Length)
+            {
+                return 0;
+            }
+            int offset = outerFrames.Length - previousFrames.Length;
+            if (!Equals(previousFrames[0].GetMethod(), outerFrames[offset].GetMethod())
+                || previousFrames[0].GetFileLineNumber() != outerFrames[offset].GetFileLineNumber())
+            {
+                return 0;
+            }
+            for (int i = 1; i < previousFrames.Length; i++)
+            {
+                if (previousFrames[i].GetILOffset() != outerFrames[i + offset].GetILOffset()
+                    || FormatFrame(previousFrames[i]) != FormatFrame(outerFrames[i + offset]))
+                {
+                    return 0;
+                }
+            }
+            return previousFrames.Length;
+        }
+
+        private static string FormatFrame(System.Diagnostics.StackFrame frame)
+            => new System.Diagnostics.StackTrace(frame).ToString().TrimEnd('\r', '\n');
+
+        private static void AssertStackTraceIsPrinted(CausalityTrace trace, string[] textLines, string text, string indent, int sharedFrameCount = 0)
+        {
+            var frames = trace.GetFrames();
             var stackTraceText = string.Join(System.Environment.NewLine,
-                trace.GetFrames().Select(frame => indent + new System.Diagnostics.StackTrace(frame).ToString().TrimEnd('\r', '\n')));
+                frames.Take(frames.Length - sharedFrameCount).Select(frame => indent + FormatFrame(frame)));
             var stackTraceLines = stackTraceText.Length == 0
                 ? new[] { indent + "   --- All frames are hidden ---" }
                 : stackTraceText.Split(new[] { System.Environment.NewLine }, System.StringSplitOptions.None);
