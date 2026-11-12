@@ -4870,9 +4870,9 @@ namespace ProtoPromise.Tests.APIs
 
                 var text = trace.ToString();
                 CollectionAssert.AreEqual(outers, trace.OuterTraces, text);
-                // The outer traces are printed after the trace, from the innermost, each indented one more level than the one before it.
-                StringAssert.IsMatch(@"(?m)^      --- Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
-                StringAssert.IsMatch(@"(?m)^         --- Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
+                // The outer traces are printed after the trace, from the innermost, each indented one more level than the one before it, and labeled with its level.
+                StringAssert.IsMatch(@"(?m)^      --- Outer trace 1: Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
+                StringAssert.IsMatch(@"(?m)^         --- Outer trace 2: Thread \d+ .*, \d+\.\d{3} ms earlier ---\r?$", text);
                 Assert.Less(text.IndexOf(nameof(CaptureAtStep)), text.IndexOf(nameof(CaptureAtLoop)), text);
                 Assert.Less(text.IndexOf(nameof(CaptureAtLoop)), text.IndexOf(nameof(CaptureAtOther)), text);
                 AssertCausalityTraceIsPrintedCorrectly(trace, text);
@@ -5538,8 +5538,8 @@ namespace ProtoPromise.Tests.APIs
                 if (KeepsOuterTracesFromTheSameMethod)
                 {
                     StringAssert.Contains(nameof(SwitchInLoopForTraceTest), OuterTrace(trace16).ToString());
-                    // Outer traces are indented one more level.
-                    StringAssert.Contains("      --- Thread ", text16);
+                    // Outer traces are indented one more level, and labeled with their level.
+                    StringAssert.Contains("      --- Outer trace 1: Thread ", text16);
                 }
                 else
                 {

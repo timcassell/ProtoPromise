@@ -1168,8 +1168,9 @@ namespace Proto.Diagnostics
         /// A stack trace whose frames are all hidden from stack traces is printed as <c>--- All frames are hidden ---</c>.
         /// <para/>
         /// A trace's <see cref="Repeats"/> are printed after its stack trace with their threads and times, and its <see cref="OuterTraces"/> are printed after that,
-        /// each indented one more level than the one before it (followed by <c>--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---</c>
-        /// if some were dropped to stay within <see cref="MaxOuterTraces"/>). Only the frames of an outer trace that it doesn't share with the <see cref="Previous"/> trace are printed with it.
+        /// each indented one more level than the one before it, and labeled with its level, because some consoles strip the indentation
+        /// (e.g. <c>--- Outer trace 1: Thread 5 (thread pool), 12.345 ms earlier ---</c>), followed by <c>--- Outer traces truncated, increase CausalityTrace.MaxOuterTraces to see more ---</c>
+        /// if some were dropped to stay within <see cref="MaxOuterTraces"/>. Only the frames of an outer trace that it doesn't share with the <see cref="Previous"/> trace are printed with it.
         /// Parts of the chain that repeat (e.g. a callback that registers itself again from another thread, or callbacks that register each other) are only printed once:
         /// a single repeated trace is printed with the others as its repeats, and a longer repeated part is printed between <c>--- #n Begin ---</c> and <c>--- #n End ---</c> markers,
         /// followed by <c>--- #n repeated N times: ... ---</c> with the threads and times of the repeats.

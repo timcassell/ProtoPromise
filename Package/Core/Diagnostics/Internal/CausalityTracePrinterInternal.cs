@@ -285,11 +285,13 @@ namespace Proto.Diagnostics
                 }
 
                 // Each outer trace is the trace of a scope outside of the one before it, so it's indented one more level.
+                // Its level is also printed, because some consoles (e.g. Unity's) strip the indentation.
                 string indent = "";
-                foreach (var outerTrace in trace._outerTraces)
+                for (int i = 0; i < trace._outerTraces.Length; i++)
                 {
+                    var outerTrace = trace._outerTraces[i];
                     indent += MessageIndent;
-                    AppendHeader(outerTrace, indent);
+                    AppendHeader(outerTrace, indent, i + 1);
                     AppendStackTrace(outerTrace, indent, GetFramesSharedWithPrevious(outerTrace, trace._previous));
                 }
                 if (trace._areOuterTracesTruncated)
@@ -299,10 +301,14 @@ namespace Proto.Diagnostics
                 }
             }
 
-            // E.g. --- Thread 5 (thread pool), 12.345 ms earlier ---
-            private void AppendHeader(CausalityTrace trace, string indent)
+            // E.g. --- Thread 5 (thread pool), 12.345 ms earlier ---, or --- Outer trace 1: Thread 5 (thread pool), 12.345 ms earlier --- for an outer trace.
+            private void AppendHeader(CausalityTrace trace, string indent, int outerTraceLevel = 0)
             {
                 _sb.Append(indent).Append(MessageIndent).Append("--- ");
+                if (outerTraceLevel > 0)
+                {
+                    _sb.Append("Outer trace ").Append(outerTraceLevel).Append(": ");
+                }
                 AppendThreadDescription(_sb, trace._threadId, trace._threadName, trace._isThreadPoolThread, trace._isBackgroundThread);
                 if (trace != _trace)
                 {
