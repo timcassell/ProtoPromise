@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       
       - name: Copy Project Settings
         run: cp -a .github/unityci/Unity_${{ matrix.unity.major }}_Settings/. ProtoPromise_Unity/
@@ -112,7 +112,7 @@ jobs:
         run: rm -r -f .github/unityci
         if: matrix.testMode.name == 'Standalone'
 
-      - uses: jlumbroso/free-disk-space@v1.3.1
+      - uses: jlumbroso/free-disk-space@v2.0.0
         if: matrix.testMode.name == 'Standalone'
 
       - name: Run tests
@@ -130,14 +130,14 @@ jobs:
           githubToken: ''
         timeout-minutes: 240
 
-      - uses: dorny/test-reporter@v2
+      - uses: dorny/test-reporter@v3
         if: always()
         with:
           name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}
           path: 'artifacts/*.xml'
           reporter: dotnet-nunit
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}

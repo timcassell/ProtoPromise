@@ -1,6 +1,5 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Proto.Promises.Analyzer;
 using System.IO;
@@ -36,9 +35,9 @@ namespace ConsoleApplication1
     }
 }";
 
-            await new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
+            await new CSharpAnalyzerTest<YieldAsyncAnalyzer, DefaultVerifier>()
             {
-                ReferenceAssemblies = new ReferenceAssemblies("net8.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"), Path.Combine("ref", "net8.0")),
+                ReferenceAssemblies = new ReferenceAssemblies("net10.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "10.0.0"), Path.Combine("ref", "net10.0")),
                 TestState =
                 {
                     Sources = { test },
@@ -47,9 +46,9 @@ namespace ConsoleApplication1
             }.RunAsync();
         }
         private static Task RunTestAsync(string test, DiagnosticResult expectedResult)
-            => new CSharpAnalyzerTest<YieldAsyncAnalyzer, MSTestVerifier>()
+            => new CSharpAnalyzerTest<YieldAsyncAnalyzer, DefaultVerifier>()
             {
-                ReferenceAssemblies = new ReferenceAssemblies("net8.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "8.0.0"), Path.Combine("ref", "net8.0")),
+                ReferenceAssemblies = new ReferenceAssemblies("net10.0", new PackageIdentity("Microsoft.NETCore.App.Ref", "10.0.0"), Path.Combine("ref", "net10.0")),
                 TestState =
                 {
                     Sources = { test },

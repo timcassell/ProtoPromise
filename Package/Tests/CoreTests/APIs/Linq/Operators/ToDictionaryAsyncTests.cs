@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Proto.Promises;
 using Proto.Promises.CompilerServices;
 using Proto.Promises.Linq;
+using AsyncEnumerable = Proto.Promises.Linq.AsyncEnumerable; // .Net 10 added System.Linq.AsyncEnumerable.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -434,7 +435,7 @@ namespace ProtoPromise.Tests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 42, 25, 39 };
-                var res = xs.Select(x => (x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                var res = AsyncEnumerable.ToAsyncEnumerable(xs.Select(x => (x, x))).ToDictionaryAsync();
                 CollectionAssert.AreEqual(xs.ToDictionary(x => x), await res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -446,7 +447,7 @@ namespace ProtoPromise.Tests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 42, 25, 39, 25 };
-                var res = xs.Select(x => (x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                var res = AsyncEnumerable.ToAsyncEnumerable(xs.Select(x => (x, x))).ToDictionaryAsync();
                 await TestHelper.AssertThrowsAsync<ArgumentException>(() => res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -458,7 +459,7 @@ namespace ProtoPromise.Tests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 42, 25, 39 };
-                var res = xs.Select(x => new KeyValuePair<int, int>(x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                var res = AsyncEnumerable.ToAsyncEnumerable(xs.Select(x => new KeyValuePair<int, int>(x, x))).ToDictionaryAsync();
                 CollectionAssert.AreEqual(xs.ToDictionary(x => x), await res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
@@ -470,7 +471,7 @@ namespace ProtoPromise.Tests.APIs.Linq
             Promise.Run(async () =>
             {
                 var xs = new[] { 42, 25, 39, 25 };
-                var res = xs.Select(x => new KeyValuePair<int, int>(x, x)).ToAsyncEnumerable().ToDictionaryAsync();
+                var res = AsyncEnumerable.ToAsyncEnumerable(xs.Select(x => new KeyValuePair<int, int>(x, x))).ToDictionaryAsync();
                 await TestHelper.AssertThrowsAsync<ArgumentException>(() => res);
             }, SynchronizationOption.Synchronous)
                 .WaitWithTimeoutWhileExecutingForegroundContext(TimeSpan.FromSeconds(1));
