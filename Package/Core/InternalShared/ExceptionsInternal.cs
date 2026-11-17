@@ -6,12 +6,39 @@
 
 #pragma warning disable IDE0090 // Use 'new(...)'
 
+using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
     partial class Internal
     {
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectContainer, IRejectionToContainer, ICantHandleException
+        {
+            internal UnhandledExceptionInternal(object value, string message, Diagnostics.CausalityTrace causalityTrace, Exception innerException)
+                : base(value, message, causalityTrace, innerException)
+            { }
+
+            void ICantHandleException.ReportUnhandled(object traceable)
+                => ReportUnhandledException(this);
+
+            void IRejectContainer.ReportUnhandled()
+                => ReportUnhandledException(this);
+
+            ExceptionDispatchInfo IRejectContainer.GetExceptionDispatchInfo()
+                => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
+
+            IRejectContainer IRejectionToContainer.ToContainer(object traceable)
+                => this;
+
+            Exception IRejectContainer.GetValueAsException()
+                => Value as Exception ?? this;
+        }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif

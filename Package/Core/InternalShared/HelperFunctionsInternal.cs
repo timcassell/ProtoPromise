@@ -248,46 +248,31 @@ namespace Proto.Promises
                 ? "An exception was not handled."
                 : $"A rejected value was not handled, type: {unhandledValue.GetType()}, value: {unhandledValue}";
 
-            ReportUnhandledException(new UnhandledException(unhandledValue, message, causalityTrace, innerException));
+            ReportUnhandledException(new UnhandledExceptionInternal(unhandledValue, message, causalityTrace, innerException));
         }
 
         internal static void ReportUnhandledException(UnhandledException exception)
         {
 #if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledException(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1), exception);
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1), exception);
 #endif
             // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;
             if (handler != null)
             {
-                try
-                {
-                    handler.Invoke(exception);
-                }
-                catch (Exception e)
-                {
-                    // The handler is called from the library's code (e.g. while a promise is completing), so its exception must not escape into it.
-                    // Instead, we report it the same way as if there was no handler.
-                    PostThrow(state => ((System.Runtime.ExceptionServices.ExceptionDispatchInfo) state).Throw(),
-                        System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e));
-                }
+                handler.Invoke(exception);
                 return;
             }
 
-            PostThrow(e => { throw (UnhandledException) e; }, exception);
-        }
-
-        // Throws the exception in the ForegroundContext if it exists, or background if it doesn't.
-        private static void PostThrow(SendOrPostCallback throwCallback, object exception)
-        {
+            // Otherwise, throw it in the ForegroundContext if it exists, or background if it doesn't.
             SynchronizationContext synchronizationContext = Promise.Config.ForegroundContext ?? Promise.Config.BackgroundContext;
             if (synchronizationContext != null)
             {
-                synchronizationContext.Post(throwCallback, exception);
+                synchronizationContext.Post(e => { throw (UnhandledException) e; }, exception);
             }
             else
             {
-                ThreadPool.QueueUserWorkItem(throwCallback.Invoke, exception);
+                ThreadPool.QueueUserWorkItem(e => { throw (UnhandledException) e; }, exception);
             }
         }
 

@@ -84,7 +84,7 @@ namespace Proto.Promises
                 => ReportUnhandledException(ToException());
 
             private UnhandledException ToException()
-                => new UnhandledException(Value, $"A rejected value was not handled, type: {Value.GetType()}, value: {Value}", _causalityTrace, null);
+                => new UnhandledExceptionInternal(Value, $"A rejected value was not handled, type: {Value.GetType()}, value: {Value}", _causalityTrace, null);
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
                 => ExceptionDispatchInfo.Capture(ToException());
@@ -140,7 +140,7 @@ namespace Proto.Promises
                 => ReportUnhandledException(ToException());
 
             private UnhandledException ToException()
-                => new UnhandledException(Value, "An exception was not handled.", _causalityTrace, _capturedInfo.SourceException);
+                => new UnhandledExceptionInternal(Value, "An exception was not handled.", _causalityTrace, _capturedInfo.SourceException);
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
                 => _capturedInfo;
@@ -192,7 +192,7 @@ namespace Proto.Promises
                 => ReportUnhandledException(ToException());
 
             private UnhandledException ToException()
-                => new UnhandledException(Value, "An exception was not handled.", _causalityTrace, null);
+                => new UnhandledExceptionInternal(Value, "An exception was not handled.", _causalityTrace, null);
 
             public override ExceptionDispatchInfo GetExceptionDispatchInfo()
                 => DispatchInfo;

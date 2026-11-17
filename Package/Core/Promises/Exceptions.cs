@@ -10,7 +10,6 @@
 using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 
 namespace Proto.Promises
 {
@@ -150,9 +149,9 @@ namespace Proto.Promises
     /// Exception that is thrown if a promise is rejected and that rejection is never handled.
     /// </summary>
 #if !PROTO_PROMISE_DEVELOPER_MODE
-    [DebuggerNonUserCode, StackTraceHidden]
+    [DebuggerNonUserCode]
 #endif
-    public class UnhandledException : Exception, Internal.IRejectContainer, Internal.IRejectionToContainer, Internal.ICantHandleException
+    public abstract class UnhandledException : Exception
     {
         private readonly object _value;
         private readonly CausalityTrace _causalityTrace;
@@ -184,21 +183,6 @@ namespace Proto.Promises
         /// The causality trace of the rejection, or <see langword="null"/> if causality traces were disabled (see <see cref="CausalityTrace.IsEnabled"/>) or no trace was captured.
         /// </summary>
         public CausalityTrace CausalityTrace => _causalityTrace;
-
-        void Internal.ICantHandleException.ReportUnhandled(object traceable)
-            => Internal.ReportUnhandledException(this);
-
-        void Internal.IRejectContainer.ReportUnhandled()
-            => Internal.ReportUnhandledException(this);
-
-        ExceptionDispatchInfo Internal.IRejectContainer.GetExceptionDispatchInfo()
-            => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
-
-        Internal.IRejectContainer Internal.IRejectionToContainer.ToContainer(object traceable)
-            => this;
-
-        Exception Internal.IRejectContainer.GetValueAsException()
-            => Value as Exception ?? this;
     }
 
     /// <summary>

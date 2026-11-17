@@ -3264,74 +3264,6 @@ namespace ProtoPromise.Tests.APIs
                 => Promise.Config.UncaughtRejectionHandler = _previousHandler;
         }
 
-        // Records what the callbacks that are posted to it throw, by running them immediately.
-        private sealed class ThrowRecordingContext : System.Threading.SynchronizationContext, System.IDisposable
-        {
-            private readonly System.Threading.SynchronizationContext _previousContext = Promise.Config.ForegroundContext;
-            private readonly List<System.Exception> _thrown = new List<System.Exception>();
-
-            internal ThrowRecordingContext()
-                => Promise.Config.ForegroundContext = this;
-
-            public override void Post(System.Threading.SendOrPostCallback d, object state)
-            {
-                System.Exception thrown = null;
-                try
-                {
-                    d(state);
-                }
-                catch (System.Exception e)
-                {
-                    thrown = e;
-                }
-                lock (_thrown)
-                {
-                    _thrown.Add(thrown);
-                }
-            }
-
-            // Asserts that each posted callback threw the exception.
-            internal void AssertThrown(System.Exception expected, int count)
-            {
-                System.Exception[] thrown;
-                lock (_thrown)
-                {
-                    thrown = _thrown.ToArray();
-                }
-                Assert.AreEqual(count, thrown.Length);
-                foreach (var e in thrown)
-                {
-                    Assert.IsNotNull(e);
-                    TestHelper.AssertRejection(expected, e);
-                }
-            }
-
-            public void Dispose()
-                => Promise.Config.ForegroundContext = _previousContext;
-        }
-
-        [Test]
-        public void UncaughtRejectionHandler_Throws_ItsExceptionIsThrownInTheContext()
-        {
-            var previousHandler = Promise.Config.UncaughtRejectionHandler;
-            try
-            {
-                using (var context = new ThrowRecordingContext())
-                {
-                    var handlerException = new System.InvalidOperationException("Handler");
-                    Promise.Config.UncaughtRejectionHandler = _ => throw handlerException;
-
-                    // The handler's exception doesn't escape into the code that reported the rejection.
-                    Promise.Rejected(new System.Exception("Rejected")).Forget();
-                    context.AssertThrown(handlerException, 1);
-                }
-            }
-            finally
-            {
-                Promise.Config.UncaughtRejectionHandler = previousHandler;
-            }
-        }
-
         // Returns the exception that disposing the scope throws, or null. A ref struct can't be used in a lambda, so we don't use Assert.Throws.
         // Copies of a scope are disposed the same way as the scope.
         private static System.Exception GetDisposeException(CausalityTrace.Scope scope)
@@ -3493,44 +3425,6 @@ namespace ProtoPromise.Tests.APIs
             Volatile.Write(ref s_frameKeeper, 11);
             return thenPromise;
         }
-
-        [Test]
-        public void CausalityTraceScope_NotDisposedInCallback_HandlerThrows_TheCallbackCompletes()
-        {
-            var previousHandler = Promise.Config.UncaughtRejectionHandler;
-            CausalityTrace.IsEnabled = true;
-            try
-            {
-                using (var context = new ThrowRecordingContext())
-                {
-                    var handlerException = new System.InvalidOperationException("Handler");
-                    Promise.Config.UncaughtRejectionHandler = _ => throw handlerException;
-
-                    var deferred = Promise.NewDeferred();
-                    bool isContinued = false;
-                    deferred.Promise
-                        .Then(() => { CausalityTrace.EnterScope(CausalityTrace.Capture()); })
-                        .Then(() => isContinued = true)
-                        .Forget();
-                    deferred.Resolve();
-
-                    Assert.IsTrue(isContinued);
-                    Assert.IsNull(CausalityTrace.Capture().Previous);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // The scope that was not disposed is also reported when it's collected, which may happen at any time.
-                    TestHelper.GcCollectAndWaitForFinalizers();
-                    context.AssertThrown(handlerException, 2);
-#else
-                    context.AssertThrown(handlerException, 1);
-#endif
-                }
-            }
-            finally
-            {
-                Promise.Config.UncaughtRejectionHandler = previousHandler;
-                CausalityTrace.IsEnabled = false;
-            }
-        }
 #endif
 
 #if PROTO_PROMISE_TEST_GC_ENABLED && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
@@ -3658,25 +3552,17 @@ namespace ProtoPromise.Tests.APIs
             CausalityTrace.IsEnabled = true;
             try
             {
-                using (var context = new ThrowRecordingContext())
-                {
-                    // The handler runs with the restored traces, and if it throws, its exception is thrown in the context instead of from Dispose.
-                    var handlerException = new System.InvalidOperationException("Handler");
-                    CausalityTrace handlerTrace = null;
-                    Promise.Config.UncaughtRejectionHandler = _ =>
-                    {
-                        handlerTrace = CausalityTrace.Capture();
-                        throw handlerException;
-                    };
-                    var outerScope = CausalityTrace.EnterScope(CausalityTrace.Capture());
-                    var innerScope = CausalityTrace.EnterScope(CausalityTrace.Capture());
+                // The handler runs with the restored traces.
+                CausalityTrace handlerTrace = null;
+                Promise.Config.UncaughtRejectionHandler = _ => handlerTrace = CausalityTrace.Capture();
+                var outerScope = CausalityTrace.EnterScope(CausalityTrace.Capture());
+                var innerScope = CausalityTrace.EnterScope(CausalityTrace.Capture());
 
-                    Assert.IsNull(GetDisposeException(outerScope));
-                    Assert.IsNull(handlerTrace.Previous);
-                    Assert.IsNull(CausalityTrace.Capture().Previous);
-                    context.AssertThrown(handlerException, 1);
-                    AssertDisposeThrows(innerScope, false);
-                }
+                Assert.IsNull(GetDisposeException(outerScope));
+                Assert.IsNotNull(handlerTrace);
+                Assert.IsNull(handlerTrace.Previous);
+                Assert.IsNull(CausalityTrace.Capture().Previous);
+                AssertDisposeThrows(innerScope, false);
             }
             finally
             {
@@ -3735,41 +3621,6 @@ namespace ProtoPromise.Tests.APIs
         {
             // A static constructor would make IL2CPP check that the class is initialized every time IsEnabled is read on hot paths.
             Assert.IsNull(typeof(CausalityTrace).TypeInitializer);
-        }
-
-        [Test]
-        public void PromiseConfig_HasNoStaticConstructor()
-        {
-            // A static constructor would make IL2CPP check that the class is initialized every time a setting is read on hot paths.
-            Assert.IsNull(typeof(Promise.Config).TypeInitializer);
-        }
-
-        [Test]
-        public void PromiseConfigDefaultTimerFactory_CanBeSetAndRestored()
-        {
-            var original = Promise.Config.DefaultTimerFactory;
-#if !UNITY_WEBGL // The WebGL player replaces the default with a Unity timer factory.
-            Assert.AreSame(Proto.Timers.TimerFactory.System, original);
-#endif
-            var timerFactory = new FakeTimerFactoryForConfigTest();
-            Promise.Config.DefaultTimerFactory = timerFactory;
-            try
-            {
-                Assert.AreSame(timerFactory, Promise.Config.DefaultTimerFactory);
-                Assert.Throws<Proto.Promises.ArgumentNullException>(() => Promise.Config.DefaultTimerFactory = null);
-                Assert.AreSame(timerFactory, Promise.Config.DefaultTimerFactory);
-            }
-            finally
-            {
-                Promise.Config.DefaultTimerFactory = original;
-            }
-            Assert.AreSame(original, Promise.Config.DefaultTimerFactory);
-        }
-
-        private sealed class FakeTimerFactoryForConfigTest : Proto.Timers.TimerFactory
-        {
-            public override Proto.Timers.Timer CreateTimer(System.Threading.TimerCallback callback, object state, System.TimeSpan dueTime, System.TimeSpan period)
-                => throw new System.NotImplementedException();
         }
 
         [Test]

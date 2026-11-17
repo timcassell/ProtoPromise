@@ -18,11 +18,8 @@ namespace Proto.Promises.CompilerServices
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
+    // TODO: Implement IPromiseAwareAwaiter when we start using IThreadPoolWorkItem.
     public readonly partial struct PromiseSwitchToContextAwaiter : ICriticalNotifyCompletion
-#if NETCOREAPP
-        // Only in .Net Core, where the JIT eliminates the check for it. In other runtimes, the await overrider makes it slower than UnsafeOnCompleted.
-        , Internal.IPromiseAwareAwaiter
-#endif
     {
         private readonly SynchronizationContext _context;
         private readonly bool _forceAsync;
@@ -70,11 +67,15 @@ namespace Proto.Promises.CompilerServices
         public void OnCompleted(Action continuation)
         {
             ValidateArgument(continuation, nameof(continuation));
-            // It's scheduled where the awaiting function awaits, so it doesn't capture where it was scheduled, which is where it awaited.
-            // Only async Promise functions capture that (see Promise.Config.AwaitTracesEnabled).
-            Internal.ScheduleContextCallbackDirect(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance, continuation,
-                state => state.UnsafeAs<Action>().Invoke(),
-                state => state.UnsafeAs<Action>().Invoke());
+            var context = _context;
+            if (context == null)
+            {
+                ThreadPool.QueueUserWorkItem(state => state.UnsafeAs<Action>().Invoke(), continuation);
+            }
+            else
+            {
+                context.Post(state => state.UnsafeAs<Action>().Invoke(), continuation);
+            }
         }
 
         /// <summary>Schedules the continuation onto the context.</summary>
@@ -83,13 +84,6 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void UnsafeOnCompleted(Action continuation)
             => OnCompleted(continuation);
-
-#if NETCOREAPP
-        // Async promises don't capture where they were scheduled either (see AsyncPromiseRef.ContinueOnContext).
-        [MethodImpl(Internal.InlineOption)]
-        void Internal.IPromiseAwareAwaiter.AwaitOnCompletedInternal(Internal.PromiseRefBase asyncPromiseRef)
-            => asyncPromiseRef.SwitchToContext(_context ?? Internal.BackgroundSynchronizationContextSentinel.s_instance);
-#endif
 
         static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG

@@ -47,8 +47,6 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
-            // The fields have no initializers, so that the class has no static constructor. Otherwise, IL2CPP checks that the class is initialized
-            // where the fields are accessed, which includes hot paths (e.g. async methods read s_asyncFlowExecutionContextEnabled).
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
@@ -68,17 +66,16 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => !s_objectPoolingDisabled;
+                get => s_objectPoolingEnabled;
                 set
                 {
                     s_lock.Enter();
-                    s_objectPoolingDisabled = !value;
+                    s_objectPoolingEnabled = value;
                     UpdateCombinedSettings();
                     s_lock.Exit();
                 }
             }
-            // Inverted, so that pooling is enabled by default without an initializer.
-            private static bool s_objectPoolingDisabled;
+            private static bool s_objectPoolingEnabled = true; // Enabled by default.
 #endif
 
             /// <summary>
@@ -109,9 +106,7 @@ namespace Proto.Promises
             /// Uncaught rejections get routed through this delegate.
             /// </summary>
             /// <remarks>
-            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>,
-            /// or on the thread pool if neither is set.
-            /// If the delegate throws, its exception is thrown the same way.
+            /// This must be set to a non-null delegate, otherwise uncaught rejections will be thrown in the <see cref="ForegroundContext"/> or <see cref="BackgroundContext"/>.
             /// </remarks>
             public static Action<UnhandledException> UncaughtRejectionHandler
             {
@@ -235,7 +230,7 @@ namespace Proto.Promises
             public static TimerFactory DefaultTimerFactory
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => DefaultTimerFactoryHolder.s_value;
+                get => s_defaultTimeProvider;
                 [MethodImpl(Internal.InlineOption)]
                 set
                 {
@@ -243,17 +238,10 @@ namespace Proto.Promises
                     {
                         ThrowNullTimerFactory();
                     }
-                    DefaultTimerFactoryHolder.s_value = value;
+                    s_defaultTimeProvider = value;
                 }
             }
-            // The field is in its own class, so that its initializer doesn't give this class a static constructor.
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            private static class DefaultTimerFactoryHolder
-            {
-                internal static TimerFactory s_value = TimerFactory.System;
-            }
+            private static TimerFactory s_defaultTimeProvider = TimerFactory.System;
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowNullTimerFactory()
