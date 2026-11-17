@@ -44,6 +44,8 @@ jobs:
       - name: Build Project
         uses: game-ci/unity-builder@v6
         env:
+          # Authenticates the action's game-ci CLI release lookup; anonymous API calls from shared runner IPs get rate-limited (403).
+          GITHUB_TOKEN: ${{ github.token }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}

@@ -119,6 +119,8 @@ jobs:
         id: tests
         uses: game-ci/unity-test-runner@v4
         env:
+          # Authenticates the action's game-ci CLI release lookup; anonymous API calls from shared runner IPs get rate-limited (403).
+          GITHUB_TOKEN: ${{ github.token }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE_2018_4_36F1_UBUNTU }}
@@ -136,6 +138,9 @@ jobs:
           name: unity-test-results-${{ matrix.unity.major }}-${{ matrix.testMode.name }}-${{ matrix.configuration.name }}-${{ matrix.objectPooling.name }}
           path: 'artifacts/*.xml'
           reporter: dotnet-nunit
+          list-files: failed
+          list-suites: failed
+          list-tests: failed
 
       - uses: actions/upload-artifact@v7
         if: always()
