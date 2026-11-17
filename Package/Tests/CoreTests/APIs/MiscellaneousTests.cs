@@ -30,6 +30,13 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void PromiseConfig_HasNoStaticConstructor()
+        {
+            // A static constructor would make IL2CPP check that the class is initialized every time a setting is read on hot paths.
+            Assert.IsNull(typeof(Promise.Config).TypeInitializer);
+        }
+
+        [Test]
         public void PromiseIsValidBeforeAwaited_void()
         {
             var promise = Promise.Resolved();

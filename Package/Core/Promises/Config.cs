@@ -47,6 +47,8 @@ namespace Proto.Promises
 #endif
         public static class Config
         {
+            // The fields have no initializers, so that the class has no static constructor. Otherwise, IL2CPP checks that the class is initialized
+            // where the fields are accessed, which includes hot paths (e.g. async methods read s_asyncFlowExecutionContextEnabled).
             /// <summary>
             /// Should objects be pooled or not. If this is enabled, objects can be reused to reduce GC pressure.
             /// </summary>
@@ -66,16 +68,17 @@ namespace Proto.Promises
             public static bool ObjectPoolingEnabled
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_objectPoolingEnabled;
+                get => !s_objectPoolingDisabled;
                 set
                 {
                     s_lock.Enter();
-                    s_objectPoolingEnabled = value;
+                    s_objectPoolingDisabled = !value;
                     UpdateCombinedSettings();
                     s_lock.Exit();
                 }
             }
-            private static bool s_objectPoolingEnabled = true; // Enabled by default.
+            // Inverted, so that pooling is enabled by default without an initializer.
+            private static bool s_objectPoolingDisabled;
 #endif
 
             /// <summary>
@@ -230,7 +233,7 @@ namespace Proto.Promises
             public static TimerFactory DefaultTimerFactory
             {
                 [MethodImpl(Internal.InlineOption)]
-                get => s_defaultTimeProvider;
+                get => DefaultTimerFactoryHolder.s_value;
                 [MethodImpl(Internal.InlineOption)]
                 set
                 {
@@ -238,10 +241,17 @@ namespace Proto.Promises
                     {
                         ThrowNullTimerFactory();
                     }
-                    s_defaultTimeProvider = value;
+                    DefaultTimerFactoryHolder.s_value = value;
                 }
             }
-            private static TimerFactory s_defaultTimeProvider = TimerFactory.System;
+            // The field is in its own class, so that its initializer doesn't give this class a static constructor.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private static class DefaultTimerFactoryHolder
+            {
+                internal static TimerFactory s_value = TimerFactory.System;
+            }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private static void ThrowNullTimerFactory()
