@@ -57,7 +57,8 @@ namespace Proto.Diagnostics
                 _methods = new System.Reflection.MethodBase[frames.Length];
                 _offsets = new int[frames.Length];
                 _lineNumbers = new int[frames.Length];
-                int hashCode = frames.Length;
+                var hashCode = new HashCode();
+                hashCode.Add(frames.Length);
                 for (int i = 0; i < frames.Length; i++)
                 {
                     var frame = frames[i];
@@ -65,9 +66,11 @@ namespace Proto.Diagnostics
                     // Some runtimes (like IL2CPP) don't provide accurate IL offsets, so we also compare the line numbers.
                     _offsets[i] = frame.GetILOffset();
                     _lineNumbers[i] = frame.GetFileLineNumber();
-                    hashCode = unchecked(((hashCode * 31 + _methods[i].GetHashCode()) * 31 + _offsets[i]) * 31 + _lineNumbers[i]);
+                    hashCode.Add(_methods[i]);
+                    hashCode.Add(_offsets[i]);
+                    hashCode.Add(_lineNumbers[i]);
                 }
-                _hashCode = hashCode;
+                _hashCode = hashCode.ToHashCode();
             }
 
             public bool Equals(Signature other)
