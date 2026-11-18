@@ -36,7 +36,7 @@ namespace Proto.Promises.Linq
                     var result = asyncEnumerator.Current;
                     if (await asyncEnumerator.MoveNextAsync())
                     {
-                        throw new InvalidOperationException("source contains more than 1 element.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("source contains more than 1 element.", Internal.GetFormattedStacktrace());
                     }
                     return result;
                 }
@@ -71,7 +71,7 @@ namespace Proto.Promises.Linq
                     var result = asyncEnumerator.Current;
                     if (await asyncEnumerator.MoveNextAsync())
                     {
-                        throw new InvalidOperationException("source contains more than 1 element.", Internal.GetFormattedStacktrace(1));
+                        throw new InvalidOperationException("source contains more than 1 element.", Internal.GetFormattedStacktrace());
                     }
                     return result;
                 }
@@ -97,7 +97,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -119,7 +119,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -138,7 +138,7 @@ namespace Proto.Promises.Linq
                         {
                             if (predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -168,7 +168,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -190,7 +190,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -209,7 +209,7 @@ namespace Proto.Promises.Linq
                         {
                             if (await predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -238,7 +238,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -259,7 +259,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -278,7 +278,7 @@ namespace Proto.Promises.Linq
                         {
                             if (predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -307,7 +307,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -328,7 +328,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -347,7 +347,7 @@ namespace Proto.Promises.Linq
                         {
                             if (await predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -378,7 +378,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
         }
@@ -401,7 +401,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
@@ -420,7 +420,7 @@ namespace Proto.Promises.Linq
                         {
                             if (predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -451,7 +451,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate), defaultValue);
         }
@@ -474,7 +474,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
@@ -493,7 +493,7 @@ namespace Proto.Promises.Linq
                         {
                             if (await predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -523,7 +523,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate, TSource defaultValue)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
         }
@@ -545,7 +545,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate, TSource defaultValue)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCore(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
@@ -564,7 +564,7 @@ namespace Proto.Promises.Linq
                         {
                             if (predicate.Invoke(asyncEnumerator.Current))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;
@@ -594,7 +594,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate, TSource defaultValue)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate), defaultValue);
         }
@@ -616,7 +616,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<TSource> SingleOrDefaultAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, TSource defaultValue)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return SingleOrDefaultAsyncCoreAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate), defaultValue);
         }
@@ -635,7 +635,7 @@ namespace Proto.Promises.Linq
                         {
                             if (await predicate.Invoke(asyncEnumerator.Current).ConfigureAwait(asyncEnumerator.ContinuationOptions))
                             {
-                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace(1));
+                                throw new InvalidOperationException("source contains more than 1 element that satisfies the condition.", Internal.GetFormattedStacktrace());
                             }
                         }
                         return result;

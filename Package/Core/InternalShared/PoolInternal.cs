@@ -17,9 +17,24 @@ namespace Proto.Promises
 {
     partial class Internal
     {
+        // Object pooling is disabled while causality traces are enabled, because in RELEASE mode promise traces are stored in a ConditionalWeakTable keyed by the promise,
+        // and we want them to be collected with their promises. (Pooling is always disabled in DEBUG mode.)
+        // This is updated when either setting changes (see Promise.Config.UpdateCombinedSettings), so the pool only needs to check 1 field.
+        internal static bool s_isObjectPoolingDisabled;
+
+        internal static bool IsObjectPoolingEnabled
+        {
+            [MethodImpl(InlineOption)]
+#if PROMISE_DEBUG
+            get => false;
+#else
+            get => !s_isObjectPoolingDisabled;
+#endif
+        }
+
         // If C#9 is available, we use function pointers instead of delegates to clear the pool.
 #if NETCOREAPP || UNITY_2021_2_OR_NEWER
-        // Pointers cannot be used as array types, so we have to cast to/from IntPtr.
+        // Pointers cannot be used in generic Array.Resize<T>, so we have to cast to/from IntPtr.
         private static IntPtr[] s_clearPoolPointers = new IntPtr[64];
         private static int s_clearPoolCount;
         // Must not be readonly.
@@ -123,7 +138,7 @@ namespace Proto.Promises
             internal static void MaybeRepool<T>(T obj) where T : HandleablePromiseBase
             {
                 MarkInPoolPrivate(obj);
-                if (Promise.Config.ObjectPoolingEnabled)
+                if (IsObjectPoolingEnabled)
                 {
                     Type<T>.Repool(obj);
                 }
@@ -211,7 +226,7 @@ namespace Proto.Promises
             internal void MaybeRepool(T obj)
             {
                 MarkInPoolPrivate(obj);
-                if (Promise.Config.ObjectPoolingEnabled)
+                if (IsObjectPoolingEnabled)
                 {
                     _pool.Push(obj);
                 }
@@ -272,7 +287,7 @@ namespace Proto.Promises
         {
             lock (s_pooledObjects)
             {
-                if (Promise.Config.ObjectPoolingEnabled && !s_pooledObjects.Add(obj))
+                if (IsObjectPoolingEnabled && !s_pooledObjects.Add(obj))
                 {
                     throw new Exception("Same object was added to the pool twice: " + obj);
                 }
@@ -344,20 +359,20 @@ namespace Proto.Promises
                     System.Text.StringBuilder sb = new System.Text.StringBuilder();
                     sb.AppendLine(s_inUseObjects.Count + " objects not released:");
                     sb.AppendLine();
-                    ITraceable traceable = null;
+                    Diagnostics.CausalityTrace trace = null;
                     int counter = 0;
                     foreach (var obj in s_inUseObjects)
                     {
                         // Only capture up to 100 objects to prevent overloading the test error output.
                         if (++counter <= 100)
                         {
-                            traceable = traceable ?? obj as ITraceable;
+                            trace = trace ?? GetTrace(obj);
                             sb.AppendLine(obj.ToString());
                         }
                         GC.SuppressFinalize(obj); // SuppressFinalize to not spoil the results of subsequent unit tests.
                     }
                     s_inUseObjects.Clear();
-                    throw new UnreleasedObjectException(sb.ToString(), GetFormattedStacktrace(traceable));
+                    throw new UnreleasedObjectException(sb.ToString(), trace?.ToString());
                 }
             }
         }

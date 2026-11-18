@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -61,12 +62,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ProgressBase : HandleablePromiseBase, ITraceable
+        internal abstract class ProgressBase : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
             // Start with Id 1 instead of 0 to reduce risk of false positives.
             // Must not be readonly.
             internal ProgressSmallFields _smallFields = new ProgressSmallFields(1);
@@ -90,6 +87,31 @@ namespace Proto.Promises
         internal abstract class ProgressListener : ProgressBase
         {
             internal abstract Promise DisposeAsync(int id);
+
+            // Invoke, but the handler runs in the scope of this progress's trace.
+            // It's not generic over the handler, so that AOT compilers (e.g. IL2CPP) don't generate it for every handler type.
+            // NoInlining to keep the common case small.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            protected void InvokeInScope(double value)
+            {
+                // A progress that wasn't traced doesn't enter a scope, the same as the common case.
+                var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
+                try
+                {
+                    InvokeHandler(value);
+                }
+                catch (Exception e)
+                {
+                    // Reported inside the scope, the same as other callbacks (see ReportCaughtException).
+                    ReportCaughtException(e, this);
+                }
+                finally
+                {
+                    scope.Dispose();
+                }
+            }
+
+            protected abstract void InvokeHandler(double value);
         }
 
         // Helper method to avoid typing out the TProgress.
@@ -146,7 +168,7 @@ namespace Proto.Promises
                 instance._canceled = false;
                 instance._disposed = false;
 
-                SetCreatedStacktrace(instance, 2);
+                SetCreatedStacktrace(instance);
                 // Hook up the cancelation last.
                 instance._cancelationRegistration = cancelationToken.Register<ICancelable>(instance);
                 return instance;
@@ -247,17 +269,24 @@ namespace Proto.Promises
 
             private void InvokeAndCatch(double value)
             {
-                SetCurrentInvoker(this);
-                try
+                if (!CausalityTrace.IsEnabled)
                 {
-                    _progress.Report(value);
+                    // Common case: no causality trace.
+                    try
+                    {
+                        _progress.Report(value);
+                    }
+                    catch (Exception e)
+                    {
+                        ReportRejection(e, this);
+                    }
+                    return;
                 }
-                catch (Exception e)
-                {
-                    ReportRejection(e, this);
-                }
-                ClearCurrentInvoker();
+                InvokeInScope(value);
             }
+
+            protected override void InvokeHandler(double value)
+                => _progress.Report(value);
 
             private void AfterInvoke()
             {

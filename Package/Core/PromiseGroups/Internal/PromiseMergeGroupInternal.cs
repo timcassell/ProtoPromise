@@ -414,7 +414,7 @@ namespace Proto.Promises
             => PromiseRefBase.MergePromiseGroup<TResult>.New(group, value, getResultFunc, isExtended, isFinal, cleanupCallbacks, cleanupCount);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidMergeGroup(int skipFrames)
-            => throw new InvalidOperationException("The promise merge group is invalid.", GetFormattedStacktrace(skipFrames + 1));
+        internal static void ThrowInvalidMergeGroup()
+            => throw new InvalidOperationException("The promise merge group is invalid.", GetFormattedStacktrace());
     } // class Internal
 }

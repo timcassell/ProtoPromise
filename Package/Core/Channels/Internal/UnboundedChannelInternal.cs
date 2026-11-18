@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 
 #pragma warning disable IDE0090 // Use 'new(...)'
+#pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
 namespace Proto.Promises
 {
@@ -80,7 +81,7 @@ namespace Proto.Promises
 
                 if (waitToReaders.IsNotEmpty | readers.IsNotEmpty)
                 {
-                    var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), 3, null, this);
+                    var rejection = CreateRejectContainer(new System.ObjectDisposedException(nameof(Channel<T>)), true, this);
                     if (readers.IsNotEmpty)
                     {
                         var stack = readers.MoveElementsToStackUnsafe();
@@ -425,6 +426,8 @@ namespace Proto.Promises
 
             internal override bool TryReject(object reason, int id)
             {
+                // Created before the lock is taken, because capturing its trace is slow.
+                var rejection = CreateRejectContainer(reason, true, this);
                 _smallFields._locker.Enter();
                 ValidateInsideLock(id);
 
@@ -434,7 +437,6 @@ namespace Proto.Promises
                     return false;
                 }
 
-                var rejection = CreateRejectContainer(reason, 1, null, this);
                 _closedReason = rejection;
                 var readers = _readers.TakeElements();
                 var waitToReaders = _waitToReaders.TakeElements();

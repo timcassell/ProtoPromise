@@ -8,6 +8,7 @@
 #pragma warning disable IDE0090 // Use 'new(...)'
 #pragma warning disable IDE0290 // Use primary constructor
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -113,10 +114,11 @@ namespace Proto.Promises
                 => _callback.Invoke(_capturedValue, new Promise<TResult>.Deferred(owner, owner.Id, owner.DeferredId));
         }
 
-        internal interface IDeferredPromise : ITraceable
+        internal interface IDeferredPromise
         {
             int DeferredId { get; }
             bool TryIncrementDeferredId(int deferredId);
+            void Reject(object reason);
             void RejectDirect(IRejectContainer reasonContainer);
             void CancelDirect();
         }
@@ -152,6 +154,17 @@ namespace Proto.Promises
                     MaybeThrowIfInPool(this, success);
                     return success;
                 }
+
+                // For a promise that is rejected as soon as it's created (e.g. Promise.Rejected). Nothing is waiting on it yet,
+                // and its trace was just captured where it was created, so the rejection uses that trace instead of capturing the same frames again.
+                public void RejectCreated(object reason)
+                {
+                    TryIncrementDeferredId(DeferredId);
+                    RejectDirect(CreateRejectContainer(reason, false, this));
+                }
+
+                public void Reject(object reason)
+                    => RejectDirect(CreateRejectContainer(reason, true, this));
 
                 public void RejectDirect(IRejectContainer reasonContainer)
                 {
@@ -247,7 +260,7 @@ namespace Proto.Promises
                 internal static DeferredNewPromise<TResult, TDelegate> GetOrCreate(TDelegate runner)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._disposeCounter = 2;
                     promise._runner = runner;
                     return promise;
@@ -258,17 +271,19 @@ namespace Proto.Promises
                 {
                     if (invokeOptions.GetShouldContinueImmediately(out var context))
                     {
-                        Run();
+                        Run(false);
                         return;
                     }
 
-                    ScheduleContextCallback(context, this,
-                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(),
-                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run()
+                    ScheduleContextCallbackDirect(context, this,
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(true),
+                        obj => obj.UnsafeAs<DeferredNewPromise<TResult, TDelegate>>().Run(true)
                     );
                 }
 
-                private void Run()
+                // If the callback runs immediately, it runs inside Promise.New, so the promise's trace already shows what invoked it.
+                // If it was scheduled on a context, an exception's trace is captured where it was caught, which shows what invoked it.
+                private void Run(bool isScheduled)
                 {
                     ThrowIfInPool(this);
 
@@ -276,7 +291,8 @@ namespace Proto.Promises
                     var runner = _runner;
                     _runner = default;
 
-                    SetCurrentInvoker(this);
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     try
                     {
                         runner.Invoke(this);
@@ -293,15 +309,19 @@ namespace Proto.Promises
                     {
                         if (TryIncrementDeferredId(deferredId))
                         {
-                            RejectDirect(CreateRejectContainer(e, int.MinValue, null, this));
+                            RejectDirect(CreateRejectContainer(e, isScheduled, this));
+                        }
+                        // If the deferred was already completed, report the exception as unhandled.
+                        else if (isScheduled)
+                        {
+                            ReportCaughtException(e, this);
                         }
                         else
                         {
-                            // If the deferred was already completed, report the exception as unhandled.
                             ReportRejection(e, this);
                         }
                     }
-                    ClearCurrentInvoker();
+                    ExitTracedScope(scope);
                     MaybeDispose();
                 }
             }

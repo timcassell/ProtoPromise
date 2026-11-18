@@ -69,7 +69,7 @@ namespace Proto.Promises
         public PromiseAllResultsGroup Add(Promise promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var list = _valueContainer;
             var cancelationRef = _cancelationRef;
@@ -78,14 +78,14 @@ namespace Proto.Promises
             int index = _index;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_groupId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidAllGroup();
                 }
 
                 // We don't protect the list with a lock, because we ensure this is only used by a single caller.
@@ -101,7 +101,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             // We don't protect the list with a lock, because we ensure this is only used by a single caller.
@@ -128,14 +128,14 @@ namespace Proto.Promises
             int index = _index;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             if (group == null)
             {
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidAllGroup();
                 }
 
                 // Make sure list has the same count as promises.
@@ -145,7 +145,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_groupId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             // Make sure list has the same count as promises.
@@ -212,7 +212,7 @@ namespace Proto.Promises
         public PromiseAllResultsGroup<T> Add(Promise<T> promise)
         {
 #if PROMISE_DEBUG
-            Internal.ValidateArgument(promise, nameof(promise), 1);
+            Internal.ValidateArgument(promise, nameof(promise));
 #endif
             var list = _valueContainer;
             var cancelationRef = _cancelationRef;
@@ -221,14 +221,14 @@ namespace Proto.Promises
             int index = _index;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             if (group != null)
             {
                 if (!group.TryIncrementId(_id))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidAllGroup();
                 }
 
                 // We don't protect the list with a lock, because we ensure this is only used by a single caller.
@@ -244,7 +244,7 @@ namespace Proto.Promises
 
             if (!cancelationRef.TryIncrementSourceId(_cancelationId))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             // We don't protect the list with a lock, because we ensure this is only used by a single caller.
@@ -271,14 +271,14 @@ namespace Proto.Promises
             int index = _index;
             if (cancelationRef == null | list == null)
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             if (group == null)
             {
                 if (!cancelationRef.TryDispose(_cancelationId))
                 {
-                    Internal.ThrowInvalidAllGroup(1);
+                    Internal.ThrowInvalidAllGroup();
                 }
 
                 // Make sure list has the same count as promises.
@@ -288,7 +288,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(_id))
             {
-                Internal.ThrowInvalidAllGroup(1);
+                Internal.ThrowInvalidAllGroup();
             }
 
             // Make sure list has the same count as promises.

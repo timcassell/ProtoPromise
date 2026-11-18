@@ -25,7 +25,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T> action, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
         }
@@ -44,7 +44,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T> action, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
         }
@@ -76,7 +76,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T> action)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
         }
@@ -94,7 +94,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T> action)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
         }
@@ -127,7 +127,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Action<T, int> action, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(action));
         }
@@ -146,7 +146,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Action<TCapture, T, int> action, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachWithIndexCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, action));
         }
@@ -179,7 +179,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Action<T, int> action)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(action));
         }
@@ -198,7 +198,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Action<TCapture, T, int> action)
         {
-            ValidateArgument(action, nameof(action), 1);
+            ValidateArgument(action, nameof(action));
 
             return ForEachWithIndexCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, action));
         }
@@ -233,7 +233,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
         }
@@ -253,7 +253,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
         }
@@ -286,7 +286,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, Promise> asyncAction)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
         }
@@ -305,7 +305,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, Promise> asyncAction)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
         }
@@ -339,7 +339,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this AsyncEnumerable<T> source, Func<T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(asyncAction));
         }
@@ -359,7 +359,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this AsyncEnumerable<T> source, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachWithIndexCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, asyncAction));
         }
@@ -393,7 +393,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T>(this in ConfiguredAsyncEnumerable<T> configuredSource, Func<T, int, Promise> asyncAction)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(asyncAction));
         }
@@ -412,7 +412,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null.</exception>
         public static Promise ForEachAsync<T, TCapture>(this in ConfiguredAsyncEnumerable<T> configuredSource, TCapture captureValue, Func<TCapture, T, int, Promise> asyncAction)
         {
-            ValidateArgument(asyncAction, nameof(asyncAction), 1);
+            ValidateArgument(asyncAction, nameof(asyncAction));
 
             return ForEachWithIndexCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, asyncAction));
         }
@@ -438,12 +438,12 @@ namespace Proto.Promises.Linq
     partial class AsyncEnumerable
     {
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
         {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName);
         }
 #endif
     }

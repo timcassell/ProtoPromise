@@ -266,6 +266,8 @@ namespace Proto.Promises
                 {
                     _ref = Internal.PromiseRefBase.AsyncPromiseRef<Internal.VoidResult>.GetOrCreate();
                     _id = _ref.Id;
+                    _ref.SetExceptionCreated(exception);
+                    return;
                 }
                 _ref.SetException(exception);
             }
@@ -296,6 +298,8 @@ namespace Proto.Promises
                 {
                     _ref = Internal.PromiseRefBase.AsyncPromiseRef<T>.GetOrCreate();
                     _id = _ref.Id;
+                    _ref.SetExceptionCreated(exception);
+                    return;
                 }
                 _ref.SetException(exception);
             }

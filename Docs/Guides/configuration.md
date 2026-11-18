@@ -2,9 +2,7 @@
 
 ## Config
 
-You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default.
-
-If you are in DEBUG mode, you can configure when additional stacktraces will be generated via `Promise.Config.DebugCausalityTracer`.
+You can change whether or not objects will be pooled via `Promise.Config.ObjectPoolingEnabled`. Enabling pooling reduces GC pressure, and it is enabled by default. Objects are not pooled while causality traces are enabled.
 
 `Promise.Config.UncaughtRejectionHandler` allows you to route unhandled rejections through a delegate instead of being thrown.
 
@@ -13,6 +11,12 @@ If you are in DEBUG mode, you can configure when additional stacktraces will be 
 `Promise.Config.BackgroundContext` can be set to override how background operations are executed. If this is null, `ThreadPool.QueueUserWorkItem(callback, state)` is used.
 
 `Promise.Config.AsyncFlowExecutionContextEnabled` can be set to true to enable [AsyncLocal support](asynclocal.md).
+
+## Causality Traces
+
+Set `Proto.Diagnostics.CausalityTrace.IsEnabled = true` to capture causality traces, which help you find where an unhandled rejection came from. They are disabled by default, because capturing them is expensive. See [Causality Traces](causality-traces.md).
+
+`Promise.Config.AwaitTracesEnabled` can be set to true to also trace where `async Promise` functions await, which costs another trace for each await that doesn't complete synchronously. See [Tracing Awaits](causality-traces.md#tracing-awaits).
 
 ## Manager
 

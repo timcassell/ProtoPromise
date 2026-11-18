@@ -19,14 +19,14 @@ namespace Proto.Promises
             [MethodImpl(InlineOption)]
             internal void GetResultForAwaiterVoid(short promiseId)
             {
-                ValidateId(promiseId, this, 2);
+                ValidateId(promiseId, this);
                 MaybeDispose();
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal ExceptionDispatchInfo GetExceptionDispatchInfo(Promise.State state, short promiseId)
             {
-                ValidateId(promiseId, this, 2);
+                ValidateId(promiseId, this);
                 if (state == Promise.State.Canceled)
                 {
                     MaybeDispose();
@@ -39,24 +39,48 @@ namespace Proto.Promises
                     MaybeDispose();
                     return exceptionDispatchInfo;
                 }
-                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
             }
 
             [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, short promiseId)
                 => HookupNewWaiter(promiseId, AwaiterContinuer.GetOrCreate(continuation));
 
-            [MethodImpl(InlineOption)]
             internal void OnCompleted(Action continuation, SynchronizationContext context, short promiseId)
-                => HookupNewWaiter(promiseId, ConfiguredAsyncGenericContinuer.GetOrCreate(continuation, context));
+            {
+                var continuer = ConfiguredAsyncGenericContinuer.GetOrCreate(continuation, context);
+
+                // The same as HookupNewWaiter, except that if this already completed, the continuation doesn't capture where it was scheduled (see ConfiguredAsyncGenericContinuer.HandleAfterCompleted).
+                try
+                {
+                    PromiseRefBase promiseSingleAwait = AddWaiter(promiseId, continuer, out var previousWaiter);
+                    if (previousWaiter != PendingAwaitSentinel.s_instance)
+                    {
+                        VerifyAndHandleCompletedContinuer(continuer, promiseSingleAwait);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // We're already throwing InvalidOperationException here, so we don't want the waiter object to also add exceptions from its finalizer.
+                    Discard(continuer);
+                    throw;
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void VerifyAndHandleCompletedContinuer(ConfiguredAsyncGenericContinuer continuer, PromiseRefBase promiseSingleAwait)
+            {
+                VerifyCompletedAwait(promiseSingleAwait);
+                continuer.HandleAfterCompleted();
+            }
 
             [MethodImpl(InlineOption)]
             internal Promise.ResultContainer GetResultContainerAndMaybeDispose(short promiseId)
             {
                 if (promiseId != Id | State == Promise.State.Pending)
                 {
-                    ValidateId(promiseId, this, 2);
-                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                    ValidateId(promiseId, this);
+                    throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
                 }
                 return GetResultContainerAndMaybeDispose();
             }
@@ -75,7 +99,7 @@ namespace Proto.Promises
                 [MethodImpl(InlineOption)]
                 internal TResult GetResultForAwaiter(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return GetResultAndMaybeDispose();
                 }
 
@@ -92,8 +116,8 @@ namespace Proto.Promises
                 {
                     if (promiseId != Id | State == Promise.State.Pending)
                     {
-                        ValidateId(promiseId, this, 2);
-                        throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace(2));
+                        ValidateId(promiseId, this);
+                        throw new InvalidOperationException("PromiseAwaiter.GetResult() is only valid when the promise is completed.", GetFormattedStacktrace());
                     }
                     return GetResultContainerAndMaybeDispose();
                 }
@@ -111,11 +135,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class AwaiterContinuer : HandleablePromiseBase, ITraceable
+            private sealed class AwaiterContinuer : HandleablePromiseBase, IAwaitWaiter
             {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
                 private Action _continuation;
 
                 private AwaiterContinuer() { }
@@ -135,7 +156,6 @@ namespace Proto.Promises
                     var continuer = GetOrCreate();
                     continuer._next = null;
                     continuer._continuation = continuation;
-                    SetCreatedStacktrace(continuer, 3);
                     return continuer;
                 }
 
@@ -146,14 +166,14 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
 
+                // The awaiting function (e.g. an async Task function) isn't traced, so this doesn't capture where it awaited, the same as an async Promise function
+                // without await traces (see Promise.Config.AwaitTracesEnabled). What completed the promise is already on its stack.
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
                     ThrowIfInPool(this);
                     handler.SetCompletionState(state);
                     var callback = _continuation;
-#if PROMISE_DEBUG
-                    SetCurrentInvoker(this);
-#else
+#if !PROMISE_DEBUG
                     Dispose();
 #endif
                     try
@@ -163,10 +183,9 @@ namespace Proto.Promises
                     catch (Exception e)
                     {
                         // This should never hit if the `await` keyword is used, but a user manually subscribing to OnCompleted could throw.
-                        ReportRejection(e, this);
+                        ReportCaughtException(e, this);
                     }
 #if PROMISE_DEBUG
-                    ClearCurrentInvoker();
                     Dispose();
 #endif
                 }
@@ -177,6 +196,10 @@ namespace Proto.Promises
         {
             void AwaitOnCompletedInternal(PromiseRefBase asyncPromiseRef);
         }
+
+        // A waiter that continues an await (an async Promise function, or the continuation from an awaiter's OnCompleted). If the promise already completed,
+        // it's scheduled where it awaited, which isn't captured (see ConfiguredPromise.ScheduleContinuationOnContextWhenHookedUp).
+        internal interface IAwaitWaiter { }
 
 #if !NETCOREAPP
         // Override AwaitOnCompleted implementation to prevent boxing in Unity.
@@ -301,18 +324,18 @@ namespace Proto.Promises
 #endif // !NETCOREAPP
 
         [MethodImpl(InlineOption)]
-        internal static void ValidateId(short promiseId, PromiseRefBase _ref, int skipFrames)
+        internal static void ValidateId(short promiseId, PromiseRefBase _ref)
         {
             if (promiseId != _ref.Id)
             {
-                ThrowInvalidAwait(skipFrames + 1);
+                ThrowInvalidAwait();
             }
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowInvalidAwait(int skipFrames)
+        private static void ThrowInvalidAwait()
         {
-            throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(skipFrames + 1));
+            throw new InvalidOperationException("Cannot await a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace());
         }
     } // class Internal
 } // namespace Proto.Promises

@@ -19,11 +19,11 @@ namespace Proto.Promises
 #endif
         internal sealed class UnhandledExceptionInternal : UnhandledException, IRejectContainer, IRejectionToContainer, ICantHandleException
         {
-            internal UnhandledExceptionInternal(object value, string message, string stackTrace, Exception innerException)
-                : base(value, message, stackTrace, innerException)
+            internal UnhandledExceptionInternal(object value, string message, Diagnostics.CausalityTrace causalityTrace, Exception innerException)
+                : base(value, message, causalityTrace, innerException)
             { }
 
-            void ICantHandleException.ReportUnhandled(ITraceable traceable)
+            void ICantHandleException.ReportUnhandled(object traceable)
                 => ReportUnhandledException(this);
 
             void IRejectContainer.ReportUnhandled()
@@ -32,7 +32,7 @@ namespace Proto.Promises
             ExceptionDispatchInfo IRejectContainer.GetExceptionDispatchInfo()
                 => ExceptionDispatchInfo.Capture(Value as Exception ?? this);
 
-            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
+            IRejectContainer IRejectionToContainer.ToContainer(object traceable)
                 => this;
 
             Exception IRejectContainer.GetValueAsException()
@@ -63,35 +63,34 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed class RejectionException : Exception
-        {
-            private readonly string _stackTrace;
-
-            internal RejectionException(string message, string stackTrace, Exception innerException) : base(message, innerException)
-            {
-                _stackTrace = stackTrace;
-            }
-
-            public override string StackTrace => _stackTrace;
-        }
-
-#if !PROTO_PROMISE_DEVELOPER_MODE
-        [DebuggerNonUserCode, StackTraceHidden]
-#endif
         internal sealed class RejectExceptionInternal : RejectException, IRejectionToContainer, ICantHandleException
+#if PROMISE_DEBUG
+            , ITraceable
+#endif
         {
+#if PROMISE_DEBUG
+            // In DEBUG mode, causality traces are stored in fields (see ITraceable).
+            Diagnostics.CausalityTrace ITraceable.Trace { get; set; }
+
+#endif
             private readonly object _value;
 
             internal RejectExceptionInternal(object value)
             {
                 _value = value;
+                // This is usually created where it's thrown, so we record it to use as the rejection's causality trace.
+                SetCreatedStacktrace(this);
             }
 
-            IRejectContainer IRejectionToContainer.ToContainer(ITraceable traceable)
-                => CreateRejectContainer(_value, int.MinValue, this, traceable);
+            // Use this exception's trace if it was captured, otherwise use the trace of the promise that caught it.
+            private object Traceable(object traceable)
+                => GetTrace(this) != null ? this : traceable;
 
-            void ICantHandleException.ReportUnhandled(ITraceable traceable)
-                => ReportRejection(_value, traceable);
+            IRejectContainer IRejectionToContainer.ToContainer(object traceable)
+                => CreateRejectContainer(_value, false, Traceable(traceable));
+
+            void ICantHandleException.ReportUnhandled(object traceable)
+                => ReportRejection(_value, Traceable(traceable));
         }
     }
 }

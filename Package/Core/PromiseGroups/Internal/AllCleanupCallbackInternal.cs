@@ -23,7 +23,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -34,7 +34,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -45,7 +45,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -56,7 +56,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -67,7 +67,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(onCleanup));
@@ -78,7 +78,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -89,7 +89,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(onCleanup));
@@ -100,7 +100,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreateWithIndex(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -138,7 +138,17 @@ namespace Proto.Promises
             internal ReadOnlySpan<int> ResolvedIndices
                 => _resolvedIndices.ReadOnlySpan;
 
-            internal abstract Promise Invoke(in TArg arg, int index);
+            // The callback runs in the scope of where it was registered.
+            // InvokeCore doesn't throw, so the scope doesn't need a finally block.
+            internal Promise Invoke(in TArg arg, int index)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeInternal(GetTrace(this));
+                var promise = InvokeCore(arg, index);
+                scope.Dispose();
+                return promise;
+            }
+
+            protected abstract Promise InvokeCore(in TArg arg, int index);
             internal abstract void Dispose();
         }
 
@@ -166,6 +176,7 @@ namespace Proto.Promises
                 cb._next = null;
                 cb._resolvedIndices = new TempCollectionBuilder<int>(0);
                 cb._callback = callback;
+                SetCreatedStacktrace(cb);
                 return cb;
             }
 
@@ -178,7 +189,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal override Promise Invoke(in TArg arg, int index)
+            protected override Promise InvokeCore(in TArg arg, int index)
             {
                 try
                 {
@@ -215,6 +226,7 @@ namespace Proto.Promises
                 cb._next = null;
                 cb._resolvedIndices = new TempCollectionBuilder<int>(0);
                 cb._callback = callback;
+                SetCreatedStacktrace(cb);
                 return cb;
             }
 
@@ -227,7 +239,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal override Promise Invoke(in TArg arg, int index)
+            protected override Promise InvokeCore(in TArg arg, int index)
             {
                 try
                 {

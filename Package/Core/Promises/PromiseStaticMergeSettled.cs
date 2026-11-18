@@ -38,8 +38,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
             return AllSettled(Internal.GetEnumerator(promise1, promise2), valueContainer);
         }
 
@@ -55,9 +55,9 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3), valueContainer);
         }
 
@@ -74,10 +74,10 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise promise1, Promise promise2, Promise promise3, Promise promise4, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
             return AllSettled(Internal.GetEnumerator(promise1, promise2, promise3, promise4), valueContainer);
         }
 
@@ -116,7 +116,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(Promise[] promises, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return AllSettled(promises.GetGenericEnumerator(), valueContainer);
         }
 
@@ -130,7 +130,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled(IEnumerable<Promise> promises, IList<ResultContainer> valueContainer = null)
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
             return AllSettled(promises.GetEnumerator(), valueContainer);
         }
 
@@ -144,7 +144,7 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<IList<ResultContainer>> AllSettled<TEnumerator>(TEnumerator promises, IList<ResultContainer> valueContainer = null) where TEnumerator : IEnumerator<Promise>
         {
-            ValidateArgument(promises, nameof(promises), 1);
+            ValidateArgument(promises, nameof(promises));
 
             using (promises)
             {
@@ -186,7 +186,7 @@ namespace Proto.Promises
                 return Resolved(valueContainer);
 
             HookupMaybePending:
-                ValidateElement(p, "promises", 1);
+                ValidateElement(p, "promises");
 
                 // In order to prevent a race condition with the list being expanded and results being assigned concurrently,
                 // we create the passthroughs and link them together in a queue before creating the return promise
@@ -205,7 +205,7 @@ namespace Proto.Promises
                         valueContainer.Add(default);
                     }
                     p = promises.Current;
-                    ValidateElement(p, "promises", 1);
+                    ValidateElement(p, "promises");
                     if (p._ref == null)
                     {
                         valueContainer[index] = ResultContainer.Resolved;
@@ -360,8 +360,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(ResultContainer, ResultContainer)> MergeSettled(Promise promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
 
             (ResultContainer, ResultContainer)
                 value = default;
@@ -416,8 +416,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer)> MergeSettled<T1>(Promise<T1> promise1, Promise promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
 
             (Promise<T1>.ResultContainer, ResultContainer)
                 value = default;
@@ -473,8 +473,8 @@ namespace Proto.Promises
         /// </remarks>
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)> MergeSettled<T1, T2>(Promise<T1> promise1, Promise<T2> promise2)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer)
                 value = default;
@@ -537,9 +537,9 @@ namespace Proto.Promises
         public static Promise<(ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -599,9 +599,9 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -661,9 +661,9 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer)
                 value = default;
@@ -723,9 +723,9 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer)
                 value = default;
@@ -792,10 +792,10 @@ namespace Proto.Promises
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -859,10 +859,10 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -926,10 +926,10 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -994,10 +994,10 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer)
                 value = default;
@@ -1062,10 +1062,10 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer)
                 value = default;
@@ -1136,11 +1136,11 @@ namespace Proto.Promises
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1208,11 +1208,11 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1280,11 +1280,11 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1353,11 +1353,11 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1426,11 +1426,11 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer)
                 value = default;
@@ -1499,11 +1499,11 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer)
                 value = default;
@@ -1579,12 +1579,12 @@ namespace Proto.Promises
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1657,12 +1657,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1735,12 +1735,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1813,12 +1813,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1891,12 +1891,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -1969,12 +1969,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer)
                 value = default;
@@ -2047,12 +2047,12 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer)
                 value = default;
@@ -2132,13 +2132,13 @@ namespace Proto.Promises
         public static Promise<(ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled(
             Promise promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2215,13 +2215,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1>(
             Promise<T1> promise1, Promise promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2298,13 +2298,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2>(
             Promise<T1> promise1, Promise<T2> promise2, Promise promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2381,13 +2381,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2464,13 +2464,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2547,13 +2547,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, ResultContainer, ResultContainer)
                 value = default;
@@ -2630,13 +2630,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, ResultContainer)
                 value = default;
@@ -2713,13 +2713,13 @@ namespace Proto.Promises
         public static Promise<(Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)> MergeSettled<T1, T2, T3, T4, T5, T6, T7>(
             Promise<T1> promise1, Promise<T2> promise2, Promise<T3> promise3, Promise<T4> promise4, Promise<T5> promise5, Promise<T6> promise6, Promise<T7> promise7)
         {
-            ValidateArgument(promise1, nameof(promise1), 1);
-            ValidateArgument(promise2, nameof(promise2), 1);
-            ValidateArgument(promise3, nameof(promise3), 1);
-            ValidateArgument(promise4, nameof(promise4), 1);
-            ValidateArgument(promise5, nameof(promise5), 1);
-            ValidateArgument(promise6, nameof(promise6), 1);
-            ValidateArgument(promise7, nameof(promise7), 1);
+            ValidateArgument(promise1, nameof(promise1));
+            ValidateArgument(promise2, nameof(promise2));
+            ValidateArgument(promise3, nameof(promise3));
+            ValidateArgument(promise4, nameof(promise4));
+            ValidateArgument(promise5, nameof(promise5));
+            ValidateArgument(promise6, nameof(promise6));
+            ValidateArgument(promise7, nameof(promise7));
 
             (Promise<T1>.ResultContainer, Promise<T2>.ResultContainer, Promise<T3>.ResultContainer, Promise<T4>.ResultContainer, Promise<T5>.ResultContainer, Promise<T6>.ResultContainer, Promise<T7>.ResultContainer)
                 value = default;

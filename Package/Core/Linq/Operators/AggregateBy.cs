@@ -52,9 +52,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -106,9 +106,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -160,9 +160,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -218,9 +218,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -268,9 +268,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -322,9 +322,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -376,9 +376,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -434,9 +434,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -486,9 +486,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -542,9 +542,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -598,9 +598,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -658,9 +658,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -710,9 +710,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -766,9 +766,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -822,9 +822,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -882,9 +882,9 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -934,10 +934,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -989,10 +989,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1044,10 +1044,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1103,10 +1103,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1154,10 +1154,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1209,10 +1209,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1264,10 +1264,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1323,10 +1323,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1376,10 +1376,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1433,10 +1433,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1490,10 +1490,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1551,10 +1551,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1604,10 +1604,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1661,10 +1661,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1718,10 +1718,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1779,10 +1779,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1834,10 +1834,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -1893,10 +1893,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -1952,10 +1952,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2015,10 +2015,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2070,10 +2070,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2129,10 +2129,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2188,10 +2188,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2251,10 +2251,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2308,10 +2308,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2369,10 +2369,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2430,10 +2430,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2495,10 +2495,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateBy(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2552,10 +2552,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2613,10 +2613,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),
@@ -2674,10 +2674,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keySelector),
@@ -2739,10 +2739,10 @@ namespace Proto.Promises.Linq
             TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(seedSelector, nameof(seedSelector), 1);
-            ValidateArgument(accumulator, nameof(accumulator), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(seedSelector, nameof(seedSelector));
+            ValidateArgument(accumulator, nameof(accumulator));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.AggregateByHelper<TKey, TAccumulate>.AggregateByAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(keyCaptureValue, keySelector),

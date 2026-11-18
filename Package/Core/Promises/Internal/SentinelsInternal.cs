@@ -150,7 +150,7 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return true;
                 }
 
@@ -159,7 +159,7 @@ namespace Proto.Promises
 
                 internal override PromiseRef<TResult> GetDuplicateT(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     return this;
                 }
 
@@ -168,7 +168,7 @@ namespace Proto.Promises
 
                 internal override void MaybeMarkAwaitedAndDispose(short promiseId)
                     // Do nothing.
-                    => ValidateId(promiseId, this, 2);
+                    => ValidateId(promiseId, this);
 
                 // Do nothing.
                 internal override void MaybeReportUnhandledAndDispose(Promise.State state) { }
@@ -177,11 +177,23 @@ namespace Proto.Promises
                 {
                     if (!GetIsValid(promiseId))
                     {
-                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace(2));
+                        throw new InvalidOperationException("Cannot forget an invalid promise.", GetFormattedStacktrace());
                     }
                     // Do nothing.
                 }
             } // CanceledPromiseSentinel
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            internal static class TracedSentinel
+            {
+                // Traced Promise.New and callback promises store this in the ContinuationContext field while it would otherwise be null,
+                // so that their completion fast path only needs to check the field for null, and the slow path enters the trace's scope.
+                // Only those types use this, because other promise types treat any non-null value in that field as a context.
+                // It's in its own class so that PromiseRefBase doesn't get a static constructor, which would add class initialization checks to its static members (IL2CPP).
+                internal static readonly object s_instance = new object();
+            }
         } // PromiseRefBase
 
 #if !PROTO_PROMISE_DEVELOPER_MODE

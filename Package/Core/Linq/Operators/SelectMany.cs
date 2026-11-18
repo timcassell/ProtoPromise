@@ -23,7 +23,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectMany(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -41,7 +41,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectMany(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -57,7 +57,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -75,7 +75,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -91,7 +91,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectMany(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -109,7 +109,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectMany(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -125,7 +125,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -143,7 +143,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -160,7 +160,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -179,7 +179,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -196,7 +196,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this AsyncEnumerable<TSource> source, Func<TSource, int, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -215,7 +215,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, int, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -232,7 +232,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -251,7 +251,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, AsyncEnumerable<TResult>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -268,7 +268,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, int, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(selector));
         }
@@ -287,7 +287,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="selector"/> is null.</exception>
         public static AsyncEnumerable<TResult> SelectMany<TSource, TResult, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, int, Promise<AsyncEnumerable<TResult>>> selector)
         {
-            ValidateArgument(selector, nameof(selector), 1);
+            ValidateArgument(selector, nameof(selector));
 
             return Internal.SelectManyHelper<TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, selector));
         }
@@ -312,8 +312,8 @@ namespace Proto.Promises.Linq
             Func<TSource, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -340,8 +340,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -366,8 +366,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -394,8 +394,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -420,8 +420,8 @@ namespace Proto.Promises.Linq
             Func<TSource, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -448,8 +448,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -474,8 +474,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -502,8 +502,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -529,8 +529,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -558,8 +558,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -585,8 +585,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -614,8 +614,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -641,8 +641,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -670,8 +670,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             Func<TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -697,8 +697,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -726,8 +726,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             Func<TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -754,8 +754,8 @@ namespace Proto.Promises.Linq
             Func<TSource, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -784,8 +784,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -812,8 +812,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -842,8 +842,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -870,8 +870,8 @@ namespace Proto.Promises.Linq
             Func<TSource, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -900,8 +900,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectMany(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -928,8 +928,8 @@ namespace Proto.Promises.Linq
             Func<TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -958,8 +958,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -987,8 +987,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -1018,8 +1018,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -1047,8 +1047,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -1078,8 +1078,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(source.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -1107,8 +1107,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -1138,8 +1138,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, AsyncEnumerable<TCollection>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, TResult> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndex(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),
@@ -1167,8 +1167,8 @@ namespace Proto.Promises.Linq
             Func<TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionSelector),
@@ -1198,8 +1198,8 @@ namespace Proto.Promises.Linq
             TCaptureCollection collectionCaptureValue, Func<TCaptureCollection, TSource, int, Promise<AsyncEnumerable<TCollection>>> collectionSelector,
             TCaptureResult resultCaptureValue, Func<TCaptureResult, TSource, TCollection, Promise<TResult>> resultSelector)
         {
-            ValidateArgument(collectionSelector, nameof(collectionSelector), 1);
-            ValidateArgument(resultSelector, nameof(resultSelector), 1);
+            ValidateArgument(collectionSelector, nameof(collectionSelector));
+            ValidateArgument(resultSelector, nameof(resultSelector));
 
             return Internal.SelectManyHelper<TCollection, TResult>.SelectManyWithIndexAwait(configuredSource.GetAsyncEnumerator(),
                 DelegateWrapper.Create(collectionCaptureValue, collectionSelector),

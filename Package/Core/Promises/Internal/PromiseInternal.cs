@@ -35,7 +35,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField, ITraceable
+        internal abstract partial class PromiseRefBase : PromiseRefBaseWithStructField
         {
             internal void HandleSelfWithoutResult(PromiseRefBase handler, Promise.State state)
             {
@@ -138,8 +138,64 @@ namespace Proto.Promises
             protected void Reset()
             {
                 ResetWithoutStacktrace();
-                SetCreatedStacktrace(this, 3);
+                SetCreatedStacktrace(this);
             }
+
+            internal Diagnostics.CausalityTrace Trace
+            {
+                [MethodImpl(InlineOption)]
+                get => GetTrace(this);
+            }
+
+            // Used instead of Reset by promise types that store TracedSentinel when they're traced (Promise.New and callback promises).
+            // Those types must not store anything else in the ContinuationContext field before they enter the trace's scope.
+            [MethodImpl(InlineOption)]
+            protected void ResetWithSentinel()
+            {
+                ResetWithoutStacktrace();
+                if (!Diagnostics.CausalityTrace.IsEnabled)
+                {
+                    return;
+                }
+                SetTraceAndSentinel();
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void SetTraceAndSentinel()
+            {
+                SetTrace(this, Diagnostics.CausalityTrace.Capture());
+                ContinuationContext = TracedSentinel.s_instance;
+            }
+
+            // For callback promises and Promise.New, which only need the sentinel until their callback is invoked.
+            // Their invoke methods call this when the field is not null, and exit the scope after their callback without a finally block
+            // (they catch all of its exceptions), so that the common path doesn't pay for a try/finally.
+            // It's not generic over the callback, so the invoke methods don't need a traced copy, which AOT compilers (e.g. IL2CPP)
+            // would generate for every callback type. NoInlining to keep the invoke methods small.
+            // The scope is boxed, because a Scope local makes the common path slower (see CausalityTrace.Scope.Box). It's null if there's no trace
+            // (e.g. causality traces were disabled since the promise was created).
+            // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            protected Diagnostics.CausalityTrace.Scope.Box EnterTracedScopeAndClearSentinel()
+            {
+                var trace = Trace;
+                ContinuationContext = null;
+                return trace == null ? null : new Diagnostics.CausalityTrace.Scope.Box(Diagnostics.CausalityTrace.EnterScopeInternal(trace));
+            }
+
+            [MethodImpl(InlineOption)]
+            protected static void ExitTracedScope(Diagnostics.CausalityTrace.Scope.Box scope)
+            {
+                if (scope != null)
+                {
+                    ExitTracedScopeCore(scope);
+                }
+            }
+
+            // NoInlining to keep the invoke methods small.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void ExitTracedScopeCore(Diagnostics.CausalityTrace.Scope.Box scope)
+                => scope.Dispose();
 
             [MethodImpl(InlineOption)]
             protected void PrepareEarlyDispose()
@@ -218,14 +274,21 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal void VerifyAndHandleWaiter(HandleablePromiseBase waiter, PromiseRefBase promiseSingleAwait)
             {
+                VerifyCompletedAwait(promiseSingleAwait);
+                waiter.Handle(this, State);
+            }
+
+            // Verifies the await when the waiter was not added because this already completed (or the await is invalid), and waits until the state is set.
+            [MethodImpl(InlineOption)]
+            internal void VerifyCompletedAwait(PromiseRefBase promiseSingleAwait)
+            {
                 if (!VerifyWaiter(promiseSingleAwait))
                 {
-                    throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace(3));
+                    throw new InvalidOperationException("Cannot await or forget a forgotten promise or a non-preserved promise more than once.", GetFormattedStacktrace());
                 }
                 ThrowIfInPool(this);
 
                 WaitUntilStateIsNotPending();
-                waiter.Handle(this, State);
             }
 
             [MethodImpl(InlineOption)]
@@ -327,7 +390,7 @@ namespace Proto.Promises
 
                 internal override bool GetIsCompleted(short promiseId)
                 {
-                    ValidateId(promiseId, this, 2);
+                    ValidateId(promiseId, this);
                     ThrowIfInPool(this);
                     if (CompareExchangeWaiter(InvalidAwaitSentinel.s_instance, PromiseCompletionSentinel.s_instance) == PromiseCompletionSentinel.s_instance)
                     {
@@ -343,7 +406,7 @@ namespace Proto.Promises
                 {
                     if (!GetIsValid(promiseId))
                     {
-                        throw new InvalidOperationException("Cannot await or forget a non-preserved promise more than once.", GetFormattedStacktrace(3));
+                        throw new InvalidOperationException("Cannot await or forget a non-preserved promise more than once.", GetFormattedStacktrace());
                     }
                 }
 
@@ -466,7 +529,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace(3));
+                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace());
                         }
                         bool isCompleted = State != Promise.State.Pending;
                         if (isCompleted)
@@ -493,7 +556,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace(2));
+                            throw new InvalidOperationException("Cannot forget a promise more than once.", GetFormattedStacktrace());
                         }
                         WasAwaitedOrForgotten = true;
                         MaybeDispose();
@@ -506,7 +569,7 @@ namespace Proto.Promises
                     {
                         if (!GetIsValid(promiseId))
                         {
-                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace(3));
+                            throw new InvalidOperationException("Cannot await a forgotten promise.", GetFormattedStacktrace());
                         }
                     }
                     // We don't need to do any actual work here besides verifying the promise.
@@ -692,6 +755,12 @@ namespace Proto.Promises
                 protected new void Reset()
                 {
                     base.Reset();
+                    _firstContinue = true;
+                }
+
+                protected new void ResetWithSentinel()
+                {
+                    base.ResetWithSentinel();
                     _firstContinue = true;
                 }
             }

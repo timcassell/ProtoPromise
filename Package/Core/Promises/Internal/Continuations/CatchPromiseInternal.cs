@@ -4,6 +4,7 @@
 #undef PROMISE_DEBUG
 #endif
 
+using Proto.Diagnostics;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -19,8 +20,9 @@ namespace Proto.Promises
                 protected void InvokeCatch<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, TResult>
                 {
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     Promise.State state;
-                    SetCurrentInvoker(this);
                     try
                     {
                         _result = callback.Invoke(arg);
@@ -37,13 +39,10 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
+                    ExitTracedScope(scope);
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
@@ -56,8 +55,9 @@ namespace Proto.Promises
                 protected void InvokeCatchAndAdoptVoid<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise>
                 {
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     Promise.State state;
-                    SetCurrentInvoker(this);
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -73,6 +73,7 @@ namespace Proto.Promises
                             PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
                             if (previousWaiter == PendingAwaitSentinel.s_instance)
                             {
+                                ExitTracedScope(scope);
                                 return;
                             }
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
@@ -89,13 +90,10 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
+                    ExitTracedScope(scope);
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
@@ -105,8 +103,9 @@ namespace Proto.Promises
                 protected void InvokeCatchAndAdopt<TArg, TDelegate>(in TArg arg, in TDelegate callback, IRejectContainer rejectContainer)
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
+                    // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
                     Promise.State state;
-                    SetCurrentInvoker(this);
                     try
                     {
                         var result = callback.Invoke(arg);
@@ -123,6 +122,7 @@ namespace Proto.Promises
                             PromiseRefBase promiseSingleAwait = result._ref.AddWaiter(result._id, this, out var previousWaiter);
                             if (previousWaiter == PendingAwaitSentinel.s_instance)
                             {
+                                ExitTracedScope(scope);
                                 return;
                             }
                             state = VerifyAndGetResultFromComplete(result._ref, promiseSingleAwait);
@@ -139,13 +139,10 @@ namespace Proto.Promises
                     }
                     catch (Exception e)
                     {
-                        RejectContainer = CreateRejectContainer(e, int.MinValue, null, this);
+                        RejectContainer = CreateRejectContainer(e, true, this);
                         state = Promise.State.Rejected;
                     }
-                    finally
-                    {
-                        ClearCurrentInvoker();
-                    }
+                    ExitTracedScope(scope);
 
                     // We handle next last, so that if the runtime wants to, it can tail-call optimize.
                     // Unfortunately, C# currently doesn't have a way to add the .tail prefix directly. https://github.com/dotnet/csharplang/discussions/8990
@@ -190,7 +187,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -245,7 +242,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -307,7 +304,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -369,7 +366,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -422,7 +419,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -482,7 +479,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);

@@ -66,7 +66,7 @@ namespace Proto.Promises.CompilerServices
         [MethodImpl(Internal.InlineOption)]
         public void OnCompleted(Action continuation)
         {
-            ValidateArgument(continuation, nameof(continuation), 1);
+            ValidateArgument(continuation, nameof(continuation));
             var context = _context;
             if (context == null)
             {
@@ -85,10 +85,10 @@ namespace Proto.Promises.CompilerServices
         public void UnsafeOnCompleted(Action continuation)
             => OnCompleted(continuation);
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // struct PromiseSwitchToContextAwaiter
 } // namespace Proto.Promises.CompilerServices

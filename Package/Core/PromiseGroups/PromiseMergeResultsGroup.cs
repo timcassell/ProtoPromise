@@ -172,7 +172,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -184,7 +184,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -260,7 +260,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -272,7 +272,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -354,7 +354,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -366,7 +366,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -454,7 +454,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -466,7 +466,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -560,7 +560,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -572,7 +572,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -664,7 +664,7 @@ namespace Proto.Promises
             // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
             if (mergeGroup._cancelationRef == null || !mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -675,7 +675,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             group.MarkReady(mergeGroup._count);
@@ -702,7 +702,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -714,7 +714,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -785,7 +785,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -797,7 +797,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -868,7 +868,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -880,7 +880,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -957,7 +957,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -969,7 +969,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -1052,7 +1052,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1064,7 +1064,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -1153,7 +1153,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1165,7 +1165,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,
@@ -1252,7 +1252,7 @@ namespace Proto.Promises
             // We're wrapping this in another group, so we just increment its SourceId instead of disposing.
             if (mergeGroup._cancelationRef == null || !mergeGroup._cancelationRef.TryIncrementSourceId(mergeGroup._cancelationId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1263,7 +1263,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(2);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             group.MarkReady(mergeGroup._count);
@@ -1290,7 +1290,7 @@ namespace Proto.Promises
             var mergeGroup = _mergeGroup;
             if (mergeGroup._cancelationRef == null)
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
 
             var group = mergeGroup._group;
@@ -1302,7 +1302,7 @@ namespace Proto.Promises
 
             if (!group.TryIncrementId(mergeGroup._groupId))
             {
-                Internal.ThrowInvalidMergeGroup(1);
+                Internal.ThrowInvalidMergeGroup();
             }
             group.MarkReady(mergeGroup._count);
             return Internal.NewMergePromiseResultsGroup(group, _value,

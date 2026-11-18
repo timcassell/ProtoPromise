@@ -251,7 +251,7 @@ namespace Proto.Promises.Threading
             var impl = asyncLockKey._owner;
             if (impl == null)
             {
-                AsyncLock.ThrowInvalidKey(2);
+                AsyncLock.ThrowInvalidKey();
             }
             return s_condVarTable.GetOrCreateValue(impl);
         }

@@ -11,6 +11,7 @@
 #pragma warning disable IDE0290 // Use primary constructor
 #pragma warning disable CA1513 // Use ObjectDisposedException throw helper
 
+using Proto.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -38,13 +39,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal sealed partial class CancelationRef : CancelationLinkedListNode, ITraceable
+        internal sealed partial class CancelationRef : CancelationLinkedListNode
         {
             internal static readonly CancelationRef s_canceledSentinel;
-
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
 
             static CancelationRef()
             {
@@ -192,7 +189,7 @@ namespace Proto.Promises
                 _userRetainIncrement = userRetainIncrement;
                 _linkedToBclToken = linkedToBclToken;
                 _states = States.Pending;
-                SetCreatedStacktrace(this, 2);
+                SetCreatedStacktrace(this);
             }
 
             [MethodImpl(InlineOption)]
@@ -232,7 +229,7 @@ namespace Proto.Promises
                         if (cancelRef._timer == default)
                         {
                             Discard(cancelRef);
-                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace(2));
+                            throw new InvalidReturnException("timerFactory returned a default Timer.", GetFormattedStacktrace());
                         }
                     }
                 }
@@ -377,6 +374,19 @@ namespace Proto.Promises
                 where TCancelable : ICancelable
             {
                 var nodeCreator = new UserNodeCreator<TCancelable>(cancelable);
+                // The traced path writes its registration to the same node creator, so that the JIT doesn't merge 2 registrations in the common case.
+                bool success = CausalityTrace.IsEnabled
+                    ? TryRegisterTraced(nodeCreator._cancelable, tokenId, out nodeCreator._registration)
+                    : TryRegister(ref nodeCreator, tokenId);
+                registration = nodeCreator._registration;
+                return success;
+            }
+
+            // The cancelable is boxed, so that AOT compilers (e.g. IL2CPP) don't generate the traced path for every cancelable type.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private bool TryRegisterTraced(ICancelable cancelable, int tokenId, out CancelationRegistration registration)
+            {
+                var nodeCreator = new TracedUserNodeCreator(cancelable, this);
                 bool success = TryRegister(ref nodeCreator, tokenId);
                 registration = nodeCreator._registration;
                 return success;
@@ -400,6 +410,20 @@ namespace Proto.Promises
                 where TCancelable : ICancelable
             {
                 var nodeCreator = new UserNodeCreatorNoInvoke<TCancelable>(cancelable);
+                // The traced path writes its registration to the same node creator, so that the JIT doesn't merge 2 registrations in the common case.
+                bool success = CausalityTrace.IsEnabled
+                    ? TryRegisterTraced(nodeCreator._cancelable, tokenId, out nodeCreator._registration, out nodeCreator._isCanceled)
+                    : TryRegister(ref nodeCreator, tokenId);
+                registration = nodeCreator._registration;
+                alreadyCanceled = nodeCreator._isCanceled;
+                return success;
+            }
+
+            // The cancelable is boxed, so that AOT compilers (e.g. IL2CPP) don't generate the traced path for every cancelable type.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private bool TryRegisterTraced(ICancelable cancelable, int tokenId, out CancelationRegistration registration, out bool alreadyCanceled)
+            {
+                var nodeCreator = new TracedUserNodeCreatorNoInvoke(cancelable, this);
                 bool success = TryRegister(ref nodeCreator, tokenId);
                 registration = nodeCreator._registration;
                 alreadyCanceled = nodeCreator._isCanceled;
@@ -842,13 +866,9 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
-            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode, ITraceable
+            private sealed class CallbackNodeImpl<TCancelable> : CancelationCallbackNode
                 where TCancelable : ICancelable
             {
-#if PROMISE_DEBUG
-                CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
                 private TCancelable _cancelable;
 
                 private CallbackNodeImpl() { }
@@ -868,14 +888,12 @@ namespace Proto.Promises
                     var node = GetOrCreate();
                     node._parentId = parent._smallFields._instanceId;
                     node._cancelable = cancelable;
-                    SetCreatedStacktrace(node, 2);
                     return node;
                 }
 
                 internal override void Invoke()
                 {
                     ThrowIfInPool(this);
-                    SetCurrentInvoker(this);
                     try
                     {
                         _cancelable.Cancel();
@@ -883,7 +901,6 @@ namespace Proto.Promises
                     finally
                     {
                         Dispose();
-                        ClearCurrentInvoker();
                     }
                 }
 
@@ -899,6 +916,65 @@ namespace Proto.Promises
                     ObjectPool.MaybeRepool(this);
                 }
             } // class CallbackNodeImpl<TCancelable>
+
+            // A callback node that was registered while causality traces were enabled, whose callback runs in the scope of where it was registered.
+            // The cancelable is boxed, so that AOT compilers (e.g. IL2CPP) don't generate it for every cancelable type.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private sealed class TracedCallbackNode : CancelationCallbackNode
+            {
+                private ICancelable _cancelable;
+
+                private TracedCallbackNode() { }
+
+                // The trace is captured by the node creator before it takes the parent's lock, because capturing is slow (see CaptureNodeTrace).
+                internal static TracedCallbackNode Create(ICancelable cancelable, CancelationRef parent, CausalityTrace trace)
+                {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+                    // Take from pool for object tracking purposes.
+                    var obj = ObjectPool.TryTakeOrInvalid<TracedCallbackNode>();
+                    var node = obj == PromiseRefBase.InvalidAwaitSentinel.s_instance
+                        ? new TracedCallbackNode()
+                        : obj.UnsafeAs<TracedCallbackNode>();
+#else
+                    var node = new TracedCallbackNode();
+#endif
+                    node._parentId = parent._smallFields._instanceId;
+                    node._cancelable = cancelable;
+                    SetTrace(node, trace);
+                    return node;
+                }
+
+                internal override void Invoke()
+                {
+                    ThrowIfInPool(this);
+                    // The trace is null if causality traces were disabled after it was registered, so it doesn't enter a scope, the same as an untraced node.
+                    var scope = CausalityTrace.EnterScopeInternal(GetTrace(this));
+                    try
+                    {
+                        _cancelable.Cancel();
+                    }
+                    finally
+                    {
+                        scope.Dispose();
+                        Dispose();
+                    }
+                }
+
+                internal override void Dispose()
+                {
+                    ThrowIfInPool(this);
+                    unchecked
+                    {
+                        ++_nodeId;
+                    }
+                    _cancelable = null;
+                    // Traced nodes are never returned to the object pool, even if they're disposed after causality traces are disabled
+                    // (object pooling is disabled while they're enabled), so we discard it.
+                    Discard(this);
+                }
+            } // class TracedCallbackNode
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
@@ -1020,7 +1096,7 @@ namespace Proto.Promises
                 where TCancelable : ICancelable
             {
                 internal CancelationRegistration _registration;
-                private readonly TCancelable _cancelable;
+                internal readonly TCancelable _cancelable;
 
                 [MethodImpl(InlineOption)]
                 public UserNodeCreator(in TCancelable cancelable)
@@ -1049,7 +1125,7 @@ namespace Proto.Promises
                 where TCancelable : ICancelable
             {
                 internal CancelationRegistration _registration;
-                private readonly TCancelable _cancelable;
+                internal readonly TCancelable _cancelable;
                 internal bool _isCanceled;
 
                 [MethodImpl(InlineOption)]
@@ -1064,6 +1140,74 @@ namespace Proto.Promises
                 public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
                 {
                     var node = CallbackNodeImpl<TCancelable>.GetOrCreate(_cancelable, parent);
+                    _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
+                    return node;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke()
+                    => _isCanceled = true;
+            }
+
+            // Traced node creators capture the trace of their node when they're created, so that it's not captured while the lock is held (see TryRegister).
+            // It's not captured if the parent is already canceled or disposed, because no node will be created (a parent never becomes pending again with the same token id).
+            [MethodImpl(InlineOption)]
+            private static CausalityTrace CaptureNodeTrace(CancelationRef parent)
+                => parent.IsPending() ? CausalityTrace.Capture() : null;
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private struct TracedUserNodeCreator : INodeCreator
+            {
+                internal CancelationRegistration _registration;
+                private readonly ICancelable _cancelable;
+                private readonly CausalityTrace _trace;
+
+                [MethodImpl(InlineOption)]
+                public TracedUserNodeCreator(ICancelable cancelable, CancelationRef parent)
+                {
+                    _registration = default;
+                    _cancelable = cancelable;
+                    _trace = CaptureNodeTrace(parent);
+                }
+
+                [MethodImpl(InlineOption)]
+                public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
+                {
+                    var node = TracedCallbackNode.Create(_cancelable, parent, _trace);
+                    _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
+                    return node;
+                }
+
+                [MethodImpl(InlineOption)]
+                public void Invoke()
+                    => _cancelable.Cancel();
+            }
+
+#if !PROTO_PROMISE_DEVELOPER_MODE
+            [DebuggerNonUserCode, StackTraceHidden]
+#endif
+            private struct TracedUserNodeCreatorNoInvoke : INodeCreator
+            {
+                internal CancelationRegistration _registration;
+                private readonly ICancelable _cancelable;
+                private readonly CausalityTrace _trace;
+                internal bool _isCanceled;
+
+                [MethodImpl(InlineOption)]
+                public TracedUserNodeCreatorNoInvoke(ICancelable cancelable, CancelationRef parent)
+                {
+                    _registration = default;
+                    _cancelable = cancelable;
+                    _trace = CaptureNodeTrace(parent);
+                    _isCanceled = false;
+                }
+
+                [MethodImpl(InlineOption)]
+                public CancelationCallbackNodeBase CreateNode(CancelationRef parent, int tokenId)
+                {
+                    var node = TracedCallbackNode.Create(_cancelable, parent, _trace);
                     _registration = new CancelationRegistration(parent, node, node.NodeId, tokenId);
                     return node;
                 }
@@ -1470,6 +1614,8 @@ namespace Proto.Promises
                         _bclSource = new CancellationTokenSource();
                         CancelationConverter.AttachCancelationRef(_bclSource, this);
                         var del = DelegateWrapper.Create(_bclSource, source => source.Cancel(false));
+                        // The node isn't traced, so the callbacks that were registered to the token run in the scope of what canceled this,
+                        // instead of where the token was first requested, which is not what registered them.
                         var node = CallbackNodeImpl<DelegateCaptureVoidVoid<CancellationTokenSource>>.GetOrCreate(del, this);
                         InsertPrevious(node);
                     }

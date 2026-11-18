@@ -208,7 +208,7 @@ namespace Proto.Promises
             => PromiseRefBase.AllPromiseGroup<T>.GetOrCreate(groupCancelationRef, result, cleanupCallback);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void ThrowInvalidAllGroup(int skipFrames)
-            => throw new InvalidOperationException("The promise all group is invalid.", GetFormattedStacktrace(skipFrames + 1));
+        internal static void ThrowInvalidAllGroup()
+            => throw new InvalidOperationException("The promise all group is invalid.", GetFormattedStacktrace());
     } // class Internal
 }

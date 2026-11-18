@@ -47,7 +47,7 @@ namespace Proto.Promises
                 instance._targetId = target._id;
                 instance._disposed = false;
 
-                SetCreatedStacktrace(instance, 2);
+                SetCreatedStacktrace(instance);
                 return instance;
             }
 

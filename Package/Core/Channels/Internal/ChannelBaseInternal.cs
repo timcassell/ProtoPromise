@@ -32,12 +32,8 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelBase : HandleablePromiseBase, ITraceable
+        internal abstract class ChannelBase : HandleablePromiseBase
         {
-#if PROMISE_DEBUG
-            CausalityTrace ITraceable.Trace { get; set; }
-#endif
-
             ~ChannelBase()
             {
                 if (_closedReason != ChannelSmallFields.DisposedReason)
@@ -61,7 +57,7 @@ namespace Proto.Promises
             {
                 _next = null;
                 _closedReason = null;
-                SetCreatedStacktrace(this, 3);
+                SetCreatedStacktrace(this);
             }
 
             internal bool TryRemoveWaiter(ChannelWaitToReadPromise promise)
@@ -78,7 +74,7 @@ namespace Proto.Promises
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
 #endif
-        internal abstract class ChannelBase<T> : ChannelBase, ITraceable
+        internal abstract class ChannelBase<T> : ChannelBase
         {
             // This must not be readonly.
             protected ValueLinkedQueue<ChannelReadPromise<T>> _readers = new ValueLinkedQueue<ChannelReadPromise<T>>();

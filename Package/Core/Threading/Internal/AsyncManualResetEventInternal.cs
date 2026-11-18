@@ -74,8 +74,15 @@ namespace Proto.Promises
 
     namespace Threading
     {
-        partial class AsyncManualResetEvent : Internal.ITraceable
+        partial class AsyncManualResetEvent
+#if PROMISE_DEBUG
+            : Internal.ITraceable
+#endif
         {
+#if PROMISE_DEBUG
+            // In DEBUG mode, causality traces are stored in fields (see Internal.ITraceable).
+            Diagnostics.CausalityTrace Internal.ITraceable.Trace { get; set; }
+#endif
             // These must not be readonly.
             private Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase> _waiters = new Internal.ValueLinkedQueue<Internal.AsyncEventPromiseBase>();
             // TODO: wrap these in a struct to remove extra padding.
@@ -83,10 +90,6 @@ namespace Proto.Promises
             volatile internal bool _isSet;
 
 #if PROMISE_DEBUG
-            partial void SetCreatedStacktrace() => Internal.SetCreatedStacktraceImpl(this, 2);
-
-            Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
             ~AsyncManualResetEvent()
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
@@ -99,7 +102,7 @@ namespace Proto.Promises
                     return;
                 }
 
-                var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), int.MinValue, null, this);
+                var rejectContainer = Internal.CreateRejectContainer(new AbandonedResetEventException("An AsyncManualResetEvent was collected with waiters still pending."), false, this);
 
                 var stack = waiters.MoveElementsToStackUnsafe();
                 do

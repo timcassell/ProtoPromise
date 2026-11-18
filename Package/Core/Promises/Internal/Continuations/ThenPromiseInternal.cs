@@ -34,7 +34,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -88,7 +88,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -149,7 +149,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegate callback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._callback = callback;
                     promise.SetPrevious(previous._ref);
                     previous._ref.HookupNewWaiter(previous._id, promise);
@@ -211,7 +211,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._resolveCallback = resolveCallback;
                     promise._rejectCallback = rejectCallback;
                     promise.SetPrevious(previous._ref);
@@ -282,7 +282,7 @@ namespace Proto.Promises
                 internal static Promise New(Promise previous, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._resolveCallback = resolveCallback;
                     promise._rejectCallback = rejectCallback;
                     promise.SetPrevious(previous._ref);
@@ -360,7 +360,7 @@ namespace Proto.Promises
                 internal static Promise<TResult> New(Promise previous, in TDelegateResolve resolveCallback, in TDelegateReject rejectCallback)
                 {
                     var promise = GetOrCreate();
-                    promise.Reset();
+                    promise.ResetWithSentinel();
                     promise._resolveCallback = resolveCallback;
                     promise._rejectCallback = rejectCallback;
                     promise.SetPrevious(previous._ref);

@@ -29,18 +29,16 @@ namespace Proto.Promises
             => PromiseBehaviour.s_mainThread == Thread.CurrentThread;
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-        internal static void ValidateIsOnMainThread(int skipFrames)
+        internal static void ValidateIsOnMainThread()
         {
             if (!IsOnMainThread())
             {
-                throw new InvalidOperationException("Must be on main thread to use PromiseYielder awaits. Use `Promise.SwitchToForeground()` to switch to the main thread.", Internal.GetFormattedStacktrace(skipFrames + 1));
+                throw new InvalidOperationException("Must be on main thread to use PromiseYielder awaits. Use `Promise.SwitchToForeground()` to switch to the main thread.", Internal.GetFormattedStacktrace());
             }
         }
 #else
         [MethodImpl(Internal.InlineOption)]
-#pragma warning disable IDE0060 // Remove unused parameter
-        internal static void ValidateIsOnMainThread(int skipFrames)
-#pragma warning restore IDE0060 // Remove unused parameter
+        internal static void ValidateIsOnMainThread()
         {
             // We read Time.frameCount in RELEASE mode since it's a faster thread check than accessing Thread.CurrentThread.
             _ = Time.frameCount;
@@ -159,7 +157,7 @@ namespace Proto.Promises
             internal void WaitForNext(Action continuation)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ValidateIsOnMainThread(2);
+                ValidateIsOnMainThread();
 #endif
                 int index = _nextCount;
                 int capacity = _nextQueue.Length;
@@ -229,7 +227,7 @@ namespace Proto.Promises
             internal void WaitForNext(Action continuation)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ValidateIsOnMainThread(2);
+                ValidateIsOnMainThread();
 #endif
                 if (Time.frameCount == PromiseBehaviour.s_currentFrame)
                 {
@@ -329,7 +327,7 @@ namespace Proto.Promises
             internal void WaitFor<TYieldInstruction>(in TYieldInstruction instruction) where TYieldInstruction : struct, IYieldInstruction
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ValidateIsOnMainThread(2);
+                ValidateIsOnMainThread();
 #endif
                 var processor = InstructionProcessor<TYieldInstruction>.s_instance;
 
@@ -518,7 +516,7 @@ namespace Proto.Promises
             internal static Promise WaitForInstruction(object yieldInstruction, MonoBehaviour runner, CancelationToken cancelationToken)
             {
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                ValidateIsOnMainThread(2);
+                ValidateIsOnMainThread();
 #endif
                 // Quick check to see if the token is already canceled.
                 if (cancelationToken.IsCancelationRequested)

@@ -95,7 +95,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -120,7 +120,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source,
             TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -143,7 +143,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -168,7 +168,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this AsyncEnumerable<TSource> source,
             TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -190,7 +190,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -214,7 +214,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -236,7 +236,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
                 configuredSource.GetAsyncEnumerator(),
@@ -260,7 +260,7 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TSource>> ToDictionaryAsync<TSource, TKey, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
 
             return ToDictionaryHelper<TKey>.ToDictionaryAsyncCoreAwait(
                 configuredSource.GetAsyncEnumerator(),
@@ -381,8 +381,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -410,8 +410,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -437,8 +437,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -466,8 +466,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -492,8 +492,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -520,8 +520,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -546,8 +546,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 configuredSource.GetAsyncEnumerator(),
@@ -574,8 +574,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 configuredSource.GetAsyncEnumerator(),
@@ -603,8 +603,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -634,8 +634,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -663,8 +663,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -694,8 +694,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -722,8 +722,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -752,8 +752,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCore(
                 configuredSource.GetAsyncEnumerator(),
@@ -780,8 +780,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 configuredSource.GetAsyncEnumerator(),
@@ -810,8 +810,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, TElement> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKey(
                 configuredSource.GetAsyncEnumerator(),
@@ -837,8 +837,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -866,8 +866,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -893,8 +893,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -922,8 +922,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -948,8 +948,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -976,8 +976,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1002,8 +1002,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1030,8 +1030,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, Func<TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1059,8 +1059,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
             Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -1090,8 +1090,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -1119,8 +1119,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this AsyncEnumerable<TSource> source,
             Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -1150,8 +1150,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this AsyncEnumerable<TSource> source,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 source.GetAsyncEnumerator(cancelationToken),
@@ -1178,8 +1178,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1208,8 +1208,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, TKey> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1236,8 +1236,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             Func<TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 configuredSource.GetAsyncEnumerator(),
@@ -1266,8 +1266,8 @@ namespace Proto.Promises.Linq
         public static Promise<Dictionary<TKey, TElement>> ToDictionaryAsync<TSource, TKey, TElement, TKeyCapture, TElementCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource,
             TKeyCapture captureKeyValue, Func<TKeyCapture, TSource, Promise<TKey>> keySelector, TElementCapture captureElementValue, Func<TElementCapture, TSource, Promise<TElement>> elementSelector, IEqualityComparer<TKey> comparer = null)
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(elementSelector, nameof(elementSelector), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(elementSelector, nameof(elementSelector));
 
             return ToDictionaryHelper<TKey, TElement>.ToDictionaryAsyncCoreAwaitKeyElement(
                 configuredSource.GetAsyncEnumerator(),

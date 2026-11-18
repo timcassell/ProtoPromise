@@ -135,8 +135,8 @@ namespace Proto.Promises
             /// </summary>
             public void OnCompleted(Action continuation)
             {
-                ValidateArgument(continuation, nameof(continuation), 1);
-                InternalHelper.ValidateIsOnMainThread(1);
+                ValidateArgument(continuation, nameof(continuation));
+                InternalHelper.ValidateIsOnMainThread();
                 var copy = this;
                 copy._continuation = continuation;
                 InternalHelper.PromiseBehaviour.s_genericProcessor.WaitFor(copy);
@@ -247,10 +247,10 @@ namespace Proto.Promises
             await awaiter;
         }
 
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
-            => Internal.ValidateArgument(arg, argName, skipFrames + 1);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
+            => Internal.ValidateArgument(arg, argName);
 #endif
     } // PromiseYieldExtensions
 }

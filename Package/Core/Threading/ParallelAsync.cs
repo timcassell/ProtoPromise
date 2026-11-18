@@ -35,7 +35,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for operation.</returns>
         public static Promise For(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, Func<int, CancelationToken, Promise> body)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper.For(fromIndex, toIndex, DelegateWrapper.Create(body), parallelAsyncOptions);
         }
 
@@ -57,7 +57,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for operation.</returns>
         public static Promise For<TCapture>(int fromIndex, int toIndex, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, int, CancelationToken, Promise> body)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper.For(fromIndex, toIndex, DelegateWrapper.Create(captureValue, body), parallelAsyncOptions);
         }
 
@@ -79,7 +79,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for each operation.</returns>
         public static Promise ForEach<TSource>(IEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, Func<TSource, CancelationToken, Promise> body)
         {
-            ValidateArgument(source, nameof(source), 1);
+            ValidateArgument(source, nameof(source));
             return ParallelAsync<TSource>.ForEach(source.GetEnumerator(), parallelAsyncOptions, body);
         }
 
@@ -105,7 +105,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for each operation.</returns>
         public static Promise ForEach<TSource, TCapture>(IEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
             return ParallelAsync<TSource>.ForEach(source.GetEnumerator(), parallelAsyncOptions, captureValue, body);
         }
 
@@ -127,7 +127,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for each operation.</returns>
         public static Promise ForEach<TSource>(AsyncEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, Func<TSource, CancelationToken, Promise> body)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper<TSource>.ForEach(source, DelegateWrapper.Create(body), parallelAsyncOptions);
         }
 
@@ -153,7 +153,7 @@ namespace Proto.Promises.Threading
         /// <returns>A promise that represents the entire for each operation.</returns>
         public static Promise ForEach<TSource, TCapture>(AsyncEnumerable<TSource> source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
         {
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper<TSource>.ForEach(source, DelegateWrapper.Create(captureValue, body), parallelAsyncOptions);
         }
     }
@@ -187,8 +187,8 @@ namespace Proto.Promises.Threading
         public static Promise ForEach<TEnumerator>(TEnumerator source, ParallelAsyncOptions parallelAsyncOptions, Func<TSource, CancelationToken, Promise> body)
             where TEnumerator : IEnumerator<TSource>
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper<TSource>.ForEach(source, DelegateWrapper.Create(body), parallelAsyncOptions);
         }
 
@@ -216,8 +216,8 @@ namespace Proto.Promises.Threading
         public static Promise ForEach<TEnumerator, TCapture>(TEnumerator source, ParallelAsyncOptions parallelAsyncOptions, TCapture captureValue, Func<TCapture, TSource, CancelationToken, Promise> body)
             where TEnumerator : IEnumerator<TSource>
         {
-            ValidateArgument(source, nameof(source), 1);
-            ValidateArgument(body, nameof(body), 1);
+            ValidateArgument(source, nameof(source));
+            ValidateArgument(body, nameof(body));
             return ParallelAsyncHelper<TSource>.ForEach(source, DelegateWrapper.Create(captureValue, body), parallelAsyncOptions);
         }
     }
@@ -225,12 +225,12 @@ namespace Proto.Promises.Threading
     partial class ParallelAsync
     {
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
         {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName);
         }
 #endif
     }
@@ -238,12 +238,12 @@ namespace Proto.Promises.Threading
     partial class ParallelAsync<TSource>
     {
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
         {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName);
         }
 #endif
     }

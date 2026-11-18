@@ -20,7 +20,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -31,7 +31,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -42,7 +42,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(onCleanup));
@@ -53,7 +53,7 @@ namespace Proto.Promises
         {
             if (onCleanup == null)
             {
-                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace(2));
+                throw new ArgumentNullException(nameof(onCleanup), Internal.GetFormattedStacktrace());
             }
 
             return Helper<TArg>.GetOrCreate(DelegateWrapper.Create(capturedValue, onCleanup));
@@ -79,7 +79,17 @@ namespace Proto.Promises
 #endif
         internal abstract class RaceCleanupCallback<TArg> : HandleablePromiseBase
         {
-            internal abstract Promise Invoke(in TArg arg);
+            // The callback runs in the scope of where it was registered.
+            // InvokeCore doesn't throw, so the scope doesn't need a finally block.
+            internal Promise Invoke(in TArg arg)
+            {
+                var scope = Diagnostics.CausalityTrace.EnterScopeInternal(GetTrace(this));
+                var promise = InvokeCore(arg);
+                scope.Dispose();
+                return promise;
+            }
+
+            protected abstract Promise InvokeCore(in TArg arg);
             internal abstract void Dispose();
         }
 
@@ -106,6 +116,7 @@ namespace Proto.Promises
                 var cb = GetOrCreate();
                 cb._next = null;
                 cb._callback = callback;
+                SetCreatedStacktrace(cb);
                 return cb;
             }
 
@@ -117,7 +128,7 @@ namespace Proto.Promises
                 ObjectPool.MaybeRepool(this);
             }
 
-            internal override Promise Invoke(in TArg arg)
+            protected override Promise InvokeCore(in TArg arg)
             {
                 try
                 {
