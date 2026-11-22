@@ -475,7 +475,7 @@ namespace Proto.Diagnostics
             var outerTraces = Array.Empty<CausalityTrace>();
             int maxOuterTraces = MaxOuterTraces;
             bool areOuterTracesTruncated = false;
-            if (traces != null && traces.Count > 0)
+            if (traces?.Count > 0)
             {
                 previous = traces.Peek();
                 if (traces.Count > 1)
@@ -486,7 +486,7 @@ namespace Proto.Diagnostics
 
             // The previous trace may have been captured by a call that is still running (e.g. Promise.New, which invokes its callback),
             // in which case its frames are already in this trace, so it's skipped. Its outer traces are kept, so that they're not lost.
-            if (previous != null && previous.IsContainedBy(this))
+            if (previous?.IsContainedBy(this) == true)
             {
                 outerTraces = AddOuterTraces(outerTraces, previous, maxOuterTraces, ref areOuterTracesTruncated);
                 _isTruncated = previous._isTruncated;
@@ -494,7 +494,7 @@ namespace Proto.Diagnostics
             }
             // The previous trace may have been captured at the same location (e.g. a callback that registers itself again,
             // or a loop through Promise.New whose trace was skipped), in which case it's folded into this trace, so that the chain doesn't grow.
-            if (previous != null && previous.IsRepeatOf(this))
+            if (previous?.IsRepeatOf(this) == true)
             {
                 _repeats = RepeatGroup.Add(previous._repeats, previous);
                 outerTraces = AddOuterTraces(outerTraces, previous, maxOuterTraces, ref areOuterTracesTruncated);
@@ -992,7 +992,7 @@ namespace Proto.Diagnostics
         {
             var declaringType = frame.GetMethod().DeclaringType;
             return declaringType == type
-                || (declaringType != null && declaringType.IsGenericType && type.IsGenericType && declaringType.GetGenericTypeDefinition() == type.GetGenericTypeDefinition());
+                || (declaringType?.IsGenericType == true && type.IsGenericType && declaringType.GetGenericTypeDefinition() == type.GetGenericTypeDefinition());
         }
 
         private static StackFrame GetPreviousVisibleFrame(StackTrace stackTrace, ref int index, int firstFrame)
@@ -1013,7 +1013,7 @@ namespace Proto.Diagnostics
         {
             // Every capture in a scope whose trace is too deep truncates the same traces, so the copy is cached on the trace.
             var truncatedCopy = Volatile.Read(ref trace._truncatedCopy);
-            if (truncatedCopy != null && truncatedCopy._maxDepth == maxDepth)
+            if (truncatedCopy?._maxDepth == maxDepth)
             {
                 return truncatedCopy._copy;
             }
@@ -1272,7 +1272,7 @@ namespace Proto.Diagnostics
         internal static bool IsCurrentScope(CausalityTrace trace)
         {
             var traces = ts_traces;
-            return traces != null && traces.Count > 0 && traces.Peek() == trace;
+            return traces?.Count > 0 && traces.Peek() == trace;
         }
 
         // A scope that was exited without disposing its Scope, until it's restored by disposing this (see ExitScopeIfCurrent).
