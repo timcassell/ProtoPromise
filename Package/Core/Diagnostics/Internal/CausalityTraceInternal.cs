@@ -882,7 +882,11 @@ namespace Proto.Diagnostics
             // Some runtimes include a trailing new line and some don't, so we normalize it to match the .Net 6 format (one line per frame, with a trailing new line).
             => sb.Append(new StackTrace(frame).ToString().TrimEnd('\r', '\n')).AppendLine();
 
-        // For the library's own scopes, which are always disposed in finally blocks.
+        // For the library's own scopes, which are always disposed, in finally blocks or where they can't be skipped (e.g. after a catch block that catches the callback's exceptions).
+        // Disposing them never throws: the library disposes each one once, in the function that entered it (or through its Box, which only the library holds),
+        // and the code that runs inside it can't dispose a scope that was entered outside of it (a Scope is a ref struct, so it can't be captured or stored).
+        // Only scopes that users enter (see EnterScope) can be disposed more than once or after their outer scope, which throws (see DisposedChecker.Dispose and Exit).
+        // Nested scopes that were not disposed (e.g. a callback entered a scope without disposing it) are exited along with it and reported, without throwing.
         // The common case (not traced) is only a null check, so that types that store their own trace can call this on their fast paths.
         [MethodImpl(Promises.Internal.InlineOption)]
         internal static Scope EnterScopeInternal(CausalityTrace trace)
@@ -923,15 +927,12 @@ namespace Proto.Diagnostics
                     return;
                 }
                 var traces = ts_traces;
+                // Code that runs before this is disposed can only dispose scopes that it entered (a Scope is a ref struct), which are above this depth,
+                // and disposing them pops at most down to this depth (see Scope.Exit), even if they're disposed in the wrong order.
+                Debug.Assert(traces.Count >= _depth);
                 if (traces.Count == _depth)
                 {
                     Restore(traces);
-                    return;
-                }
-                if (traces.Count < _depth)
-                {
-                    // An outer scope was disposed first, which also exited this scope, so it's not restored (its Scope throws when it's disposed, the same as if it wasn't exited).
-                    // This only happens when scopes are misused (e.g. a callback disposed a scope that was entered outside of it), so it's not tested.
                     return;
                 }
                 // Nested scopes were entered since it was exited and not disposed (e.g. by a continuation that doesn't enter a scope of its own),
@@ -1029,7 +1030,7 @@ namespace Proto.Diagnostics
                     _isPublic = isPublic;
 #if !PROTO_PROMISE_DEVELOPER_MODE
                     // Capturing where the scope was entered is expensive, so we only capture it for scopes that users enter.
-                    // The library always disposes its own scopes in finally blocks.
+                    // The library always disposes its own scopes (see EnterScopeInternal).
                     if (isPublic)
 #endif
                     {
@@ -1059,6 +1060,7 @@ namespace Proto.Diagnostics
                 {
                     if (_isDisposed)
                     {
+                        Debug.Assert(_isPublic, "The library's own scopes are never disposed improperly (see EnterScopeInternal).");
                         throw new System.ObjectDisposedException($"{nameof(CausalityTrace)}.{nameof(Scope)}");
                     }
                     _isDisposed = true;
@@ -1070,6 +1072,7 @@ namespace Proto.Diagnostics
                     if (enteredIds == null || enteredIds.Count < _depth || enteredIds[_depth - 1] != _id)
                     {
                         // Its outer scope was disposed first, which already exited this scope.
+                        Debug.Assert(_isPublic, "The library's own scopes are never disposed improperly (see EnterScopeInternal).");
                         throw new System.InvalidOperationException($"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed after its outer {nameof(Scope)}. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.");
                     }
                     bool hasNestedScopes = enteredIds.Count > _depth;
@@ -1178,7 +1181,7 @@ namespace Proto.Diagnostics
                 if (!IsEntered(traces))
                 {
                     // This scope was already exited, by disposing it or its outer scope, so this dispose is improper.
-                    // In DEBUG mode, the checker already threw.
+                    // Only a scope that users entered can get here (see EnterScopeInternal). In DEBUG mode, the checker already threw.
                     // We don't pop another scope's trace, so that traces captured later on this thread are not corrupted.
                     throw new System.InvalidOperationException($"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed more than once, or after its outer {nameof(Scope)}. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.");
                 }

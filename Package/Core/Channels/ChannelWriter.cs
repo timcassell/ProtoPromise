@@ -144,7 +144,7 @@ namespace Proto.Promises.Channels
         public bool TryReject<TReject>(TReject reason)
         {
             var channel = _channel._ref;
-            // Check before potentially boxing reason.
+            // Check before potentially boxing reason and capturing a causality trace.
             var channelId = _channel._id;
             bool isValid = channelId == channel.Id;
             if (!isValid | channel._closedReason != null)
