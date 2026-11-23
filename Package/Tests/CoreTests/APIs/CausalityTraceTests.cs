@@ -3346,15 +3346,16 @@ namespace ProtoPromise.Tests.APIs
                 {
                     var outerTrace = CaptureAtOther();
                     var innerTrace = CaptureAtStep();
-                    var outerScope = EnterScopeForTraceTest(outerTrace);
-                    var innerScope = CausalityTrace.EnterScope(innerTrace);
+                    var outerScope = CausalityTrace.EnterScope(outerTrace);
+                    var innerScope = EnterScopeForTraceTest(innerTrace);
                     outerScope.Dispose();
                     reports.AssertScopeMisuses("before its nested");
                     Assert.IsNull(CausalityTrace.Capture().Previous);
                     var reportTrace = reports.GetTrace(GetNestedScopesNotDisposedReport(reports));
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // DEBUG mode captures where the scope was entered, which is more useful than the trace that was passed to it.
+                    // DEBUG mode captures where the inner scope that was not disposed was entered, which is more useful than the traces that were passed to the scopes.
                     Assert.AreNotSame(outerTrace, reportTrace);
+                    Assert.AreNotSame(innerTrace, reportTrace);
                     StringAssert.Contains(nameof(EnterScopeForTraceTest), reportTrace.ToString());
 #else
                     Assert.AreSame(outerTrace, reportTrace);
@@ -3376,8 +3377,6 @@ namespace ProtoPromise.Tests.APIs
             }
         }
 
-#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE) || PROTO_PROMISE_TEST_GC_ENABLED
-        // In DEBUG mode, the scope that is not disposed is also reported when it's garbage collected, so this requires the GC.
         [Test]
         public void CausalityTraceScope_NotDisposedInCallback_IsReportedAndTheCallbackCompletes()
         {
@@ -3396,20 +3395,16 @@ namespace ProtoPromise.Tests.APIs
                     Assert.IsTrue(isContinued);
                     // The callback's scope also exited the scope that was not disposed.
                     Assert.IsNull(CausalityTrace.Capture().Previous);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // The scope that was not disposed is also reported when it's collected, which may happen at any time.
+#if PROTO_PROMISE_TEST_GC_ENABLED
+                    // The scope that was not disposed was reported when it was exited, so it's not reported again when it's collected.
                     TestHelper.GcCollectAndWaitForFinalizers();
-                    var exceptions = reports.Exceptions;
-                    Assert.AreEqual(2, exceptions.Length, string.Join("\n", exceptions.Select(e => e.ToString())));
-                    Assert.AreEqual(1, exceptions.OfType<UnreleasedObjectException>().Count());
-                    Assert.AreEqual(1, exceptions.OfType<System.InvalidOperationException>().Count(e => e.Message.Contains("before its nested")));
-#else
-                    reports.AssertScopeMisuses("before its nested");
 #endif
-                    // The report's causality trace is where the callback that didn't dispose its scope was registered.
+                    reports.AssertScopeMisuses("before its nested");
+                    // The report's causality trace is where the scope that was not disposed was entered in the callback (in DEBUG mode), or the callback's trace.
+                    // Either way, it has where the callback was registered.
                     var reportTrace = reports.GetTrace(GetNestedScopesNotDisposedReport(reports));
                     Assert.IsNotNull(reportTrace);
-                    StringAssert.Contains(nameof(ThenWithScopeNotDisposedForTraceTest), reportTrace.StackTrace.ToString());
+                    Assert.IsTrue(HistoryContainsMethod(reportTrace, nameof(ThenWithScopeNotDisposedForTraceTest)), reportTrace.ToString());
                 }
             }
             finally
@@ -3425,7 +3420,6 @@ namespace ProtoPromise.Tests.APIs
             Volatile.Write(ref s_frameKeeper, 11);
             return thenPromise;
         }
-#endif
 
 #if PROTO_PROMISE_TEST_GC_ENABLED && (PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
         [Test]
@@ -6861,8 +6855,6 @@ namespace ProtoPromise.Tests.APIs
                 CausalityTrace.IsEnabled = false;
             }
         }
-#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE) || PROTO_PROMISE_TEST_GC_ENABLED
-        // In DEBUG mode, the scope that is not disposed is also reported when it's garbage collected, so this requires the GC.
         [Test]
         public void CausalityTraceScope_NotDisposedByAContinuationWhileTheAsyncFunctionScopeIsExited_IsReportedAndTheScopesAreRestored(
             [Values] bool flowExecutionContext)
@@ -6889,16 +6881,11 @@ namespace ProtoPromise.Tests.APIs
 
                     // The scope that was not disposed was exited when the async function's scope was restored.
                     Assert.AreEqual(0, CausalityTrace.ts_traces.Count);
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    // The scope that was not disposed is also reported when it's collected, which may happen at any time.
+#if PROTO_PROMISE_TEST_GC_ENABLED
+                    // The scope that was not disposed was reported when it was exited, so it's not reported again when it's collected.
                     TestHelper.GcCollectAndWaitForFinalizers();
-                    var exceptions = reports.Exceptions;
-                    Assert.AreEqual(2, exceptions.Length, string.Join("\n", exceptions.Select(e => e.ToString())));
-                    Assert.AreEqual(1, exceptions.OfType<UnreleasedObjectException>().Count());
-                    Assert.AreEqual(1, exceptions.OfType<System.InvalidOperationException>().Count(e => e.Message.Contains("before its nested")));
-#else
-                    reports.AssertScopeMisuses("before its nested");
 #endif
+                    reports.AssertScopeMisuses("before its nested");
                 }
             }
             finally
@@ -6907,7 +6894,6 @@ namespace ProtoPromise.Tests.APIs
                 Promise.Config.SetAsyncFlowExecutionContextEnabled(wasFlowExecutionContextEnabled);
             }
         }
-#endif
 #endif // UNITY_2021_2_OR_NEWER || !UNITY_2018_3_OR_NEWER
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]

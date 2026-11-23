@@ -1011,12 +1011,26 @@ namespace Proto.Diagnostics
                 CausalityTrace Promises.Internal.ITraceable.Trace { get; set; }
 
 #endif
-                // The ids of the checked scopes that are entered on this thread, to check that they are disposed in order.
-                // We keep their ids instead of the checkers, so that a checker whose scope is never disposed can still be collected and reported.
+                // The checked scopes that are entered on this thread, to check that they are disposed in order.
                 [ThreadStatic]
-                private static List<long> ts_enteredIds;
+                private static List<EnteredScope> ts_enteredScopes;
                 [ThreadStatic]
                 private static long ts_nextId;
+
+                private readonly struct EnteredScope
+                {
+                    internal readonly long _id;
+                    // Only for nested scopes that users entered. If one is not disposed, its outer scope reports it when it's disposed, instead of its finalizer (see Dispose).
+                    // The outermost scope is not kept, so that if it's never disposed, it can still be collected and reported by its finalizer.
+                    // The library's own scopes are always disposed (see EnterScopeInternal).
+                    internal readonly DisposedChecker _checker;
+
+                    internal EnteredScope(long id, DisposedChecker checker)
+                    {
+                        _id = id;
+                        _checker = checker;
+                    }
+                }
 
                 private readonly long _id;
                 // The number of checked scopes that were entered on this thread when this scope was entered, including itself.
@@ -1036,15 +1050,15 @@ namespace Proto.Diagnostics
                     {
                         Promises.Internal.SetCreatedStacktrace(this);
                     }
-                    var enteredIds = ts_enteredIds;
-                    if (enteredIds == null)
+                    var enteredScopes = ts_enteredScopes;
+                    if (enteredScopes == null)
                     {
-                        enteredIds = new List<long>();
-                        ts_enteredIds = enteredIds;
+                        enteredScopes = new List<EnteredScope>();
+                        ts_enteredScopes = enteredScopes;
                     }
                     _id = ++ts_nextId;
-                    enteredIds.Add(_id);
-                    _depth = enteredIds.Count;
+                    enteredScopes.Add(new EnteredScope(_id, isPublic & enteredScopes.Count > 0 ? this : null));
+                    _depth = enteredScopes.Count;
                 }
 
                 ~DisposedChecker()
@@ -1055,8 +1069,8 @@ namespace Proto.Diagnostics
 
                 // Throws if this dispose is improper (the scope was already disposed, or its outer scope was disposed first).
                 // Returns whether its nested scopes were not disposed, which is not this scope's fault (e.g. a callback that entered a scope without disposing it),
-                // so they are exited along with this scope, then reported (see Scope.Dispose).
-                internal bool Dispose()
+                // so they are exited along with this scope, then reported once (see Scope.Dispose), with where the outermost of them was entered, if it was captured.
+                internal bool Dispose(out CausalityTrace nestedScopeTrace)
                 {
                     if (_isDisposed)
                     {
@@ -1068,15 +1082,30 @@ namespace Proto.Diagnostics
                     GC.SuppressFinalize(this);
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
 
-                    var enteredIds = ts_enteredIds;
-                    if (enteredIds == null || enteredIds.Count < _depth || enteredIds[_depth - 1] != _id)
+                    var enteredScopes = ts_enteredScopes;
+                    if (enteredScopes == null || enteredScopes.Count < _depth || enteredScopes[_depth - 1]._id != _id)
                     {
                         // Its outer scope was disposed first, which already exited this scope.
                         Debug.Assert(_isPublic, "The library's own scopes are never disposed improperly (see EnterScopeInternal).");
                         throw new System.InvalidOperationException($"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed after its outer {nameof(Scope)}. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.");
                     }
-                    bool hasNestedScopes = enteredIds.Count > _depth;
-                    enteredIds.RemoveRange(_depth - 1, enteredIds.Count - _depth + 1);
+                    bool hasNestedScopes = false;
+                    nestedScopeTrace = null;
+                    // From the innermost, so that the trace is the outermost one's.
+                    for (int i = enteredScopes.Count - 1; i >= _depth; --i)
+                    {
+                        var nestedChecker = enteredScopes[i]._checker;
+                        if (nestedChecker != null)
+                        {
+                            // It's only reported here.
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
+                            GC.SuppressFinalize(nestedChecker);
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
+                            hasNestedScopes = true;
+                            nestedScopeTrace = Promises.Internal.GetTrace(nestedChecker) ?? nestedScopeTrace;
+                        }
+                    }
+                    enteredScopes.RemoveRange(_depth - 1, enteredScopes.Count - _depth + 1);
                     return hasNestedScopes;
                 }
             }
@@ -1220,8 +1249,8 @@ namespace Proto.Diagnostics
             }
 
             // The exception is not thrown (see Exit), so we give it the stack trace of where the scope was disposed.
-            // Its causality trace is where the scope was entered if users entered it and it was captured (in DEBUG mode, see DisposedChecker),
-            // otherwise the scope's trace. For the library's scopes, that's where the callback that didn't dispose its nested scopes was registered.
+            // In DEBUG mode, its causality trace is where the nested scope that was not disposed was entered, or where the scope was entered if users entered it,
+            // if they were captured (see DisposedChecker). Otherwise, it's the scope's trace. For the library's scopes, that's where the callback that didn't dispose its nested scopes was registered.
             [MethodImpl(MethodImplOptions.NoInlining)]
             internal static void ReportNestedScopesNotDisposed(CausalityTrace trace)
                 => Promises.Internal.ReportUnhandledValue(new Promises.InvalidOperationException(
