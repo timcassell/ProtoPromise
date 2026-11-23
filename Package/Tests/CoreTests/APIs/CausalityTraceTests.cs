@@ -3462,9 +3462,197 @@ namespace ProtoPromise.Tests.APIs
             CausalityTrace.EnterScope(isTraceNull ? null : CausalityTrace.Capture());
             Volatile.Write(ref s_frameKeeper, 12);
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void EnterAndAbandonLaterScope()
+        {
+            CausalityTrace.EnterScope(CausalityTrace.Capture());
+            Volatile.Write(ref s_frameKeeper, 46);
+        }
+
+        // Runs the actions on a new thread, so that the scopes they abandon are not left on this thread's scopes,
+        // collecting garbage after each one while the thread is still running, so that its scopes are not released with it.
+        // Returns the unhandled exceptions that were reported after each one, and then after the thread exited.
+        private static UnhandledException[][] RunOnThreadAndCollectAfterEach(params System.Action[] actions)
+        {
+            var currentRejectionHandler = Promise.Config.UncaughtRejectionHandler;
+            var unhandledExceptions = new System.Collections.Concurrent.ConcurrentQueue<UnhandledException>();
+            Promise.Config.UncaughtRejectionHandler = ex =>
+            {
+#if PROTO_PROMISE_DEVELOPER_MODE
+                // Developer mode wraps the report in an exception that is traced where it was reported.
+                ex = (UnhandledException) ex.InnerException;
+#endif
+                unhandledExceptions.Enqueue(ex);
+            };
+            try
+            {
+                var results = new UnhandledException[actions.Length + 1][];
+                var timeout = System.TimeSpan.FromSeconds(10);
+                using (var actionCompleted = new AutoResetEvent(false))
+                using (var collected = new AutoResetEvent(false))
+                {
+                    bool isCanceled = false;
+                    System.Exception actionException = null;
+                    var thread = new Thread(() =>
+                    {
+                        try
+                        {
+                            foreach (var action in actions)
+                            {
+                                action.Invoke();
+                                actionCompleted.Set();
+                                collected.WaitOne();
+                                if (isCanceled)
+                                {
+                                    return;
+                                }
+                            }
+                        }
+                        catch (System.Exception e)
+                        {
+                            // Passed to the test thread, so that it fails the test instead of crashing the test host.
+                            actionException = e;
+                            actionCompleted.Set();
+                        }
+                    })
+                    {
+                        IsBackground = true
+                    };
+                    thread.Start();
+                    bool threadExited;
+                    try
+                    {
+                        for (int i = 0; i < actions.Length; i++)
+                        {
+                            Assert.IsTrue(actionCompleted.WaitOne(timeout), "Action " + i + " timed out.");
+                            if (actionException != null)
+                            {
+                                Assert.Fail("Action " + i + " threw: " + actionException);
+                            }
+                            TestHelper.GcCollectAndWaitForFinalizers();
+                            results[i] = unhandledExceptions.ToArray();
+                            while (unhandledExceptions.TryDequeue(out _)) { }
+                            collected.Set();
+                        }
+                    }
+                    finally
+                    {
+                        isCanceled = true;
+                        collected.Set();
+                        threadExited = thread.Join(timeout);
+                    }
+                    // Checked after the actions, so that it doesn't hide why they failed.
+                    Assert.IsTrue(threadExited, "The thread did not exit.");
+                }
+                // The thread's scopes are released with it.
+                TestHelper.GcCollectAndWaitForFinalizers();
+                results[actions.Length] = unhandledExceptions.ToArray();
+                return results;
+            }
+            finally
+            {
+                Promise.Config.UncaughtRejectionHandler = currentRejectionHandler;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceScope_NotDisposedAfterAnOuterScopeThatWasNotDisposedWasCollected_IsReported()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var reports = RunOnThreadAndCollectAfterEach(
+                    () => EnterAndAbandonScope(false),
+                    EnterAndAbandonLaterScope);
+
+                Assert.AreEqual(1, reports[0].Length, string.Join("\n", reports[0].Select(e => e.ToString())));
+                StringAssert.Contains(nameof(EnterAndAbandonScope), reports[0][0].StackTrace);
+                // The abandoned outer scope that was collected doesn't keep the later scope, so it's also collected and reported.
+                Assert.AreEqual(1, reports[1].Length, string.Join("\n", reports[1].Select(e => e.ToString())));
+                Assert.IsInstanceOf<UnreleasedObjectException>(reports[1][0].Value);
+                StringAssert.Contains(nameof(EnterAndAbandonLaterScope), reports[1][0].StackTrace);
+                // Neither is reported again.
+                Assert.AreEqual(0, reports[2].Length, string.Join("\n", reports[2].Select(e => e.ToString())));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceScope_NotDisposedInsideAnOuterScopeThatWasNotDisposed_BothAreReportedOnce()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                var reports = RunOnThreadAndCollectAfterEach(() =>
+                {
+                    EnterAndAbandonScope(false);
+                    EnterAndAbandonLaterScope();
+                });
+
+                // They're collected together, and each one is reported.
+                var text = string.Join("\n", reports[0].Select(e => e.ToString()));
+                Assert.AreEqual(2, reports[0].Length, text);
+                Assert.IsTrue(reports[0].All(e => e.Value is UnreleasedObjectException), text);
+                // The inner scope's trace has the outer scope's trace in its history, so the outer scope's report is the one without the inner scope's frame.
+                var innerReport = reports[0].Single(e => e.StackTrace.Contains(nameof(EnterAndAbandonLaterScope)));
+                var outerReport = reports[0].Single(e => e != innerReport);
+                StringAssert.Contains(nameof(EnterAndAbandonScope), outerReport.StackTrace);
+                // Neither is reported again when the thread's scopes are released with it.
+                Assert.AreEqual(0, reports[1].Length, string.Join("\n", reports[1].Select(e => e.ToString())));
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
 #endif
 
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static CausalityTrace.Scope EnterNestedScopeForTraceTest(CausalityTrace trace)
+        {
+            var scope = CausalityTrace.EnterScope(trace);
+            Volatile.Write(ref s_frameKeeper, 47);
+            return scope;
+        }
+
+        // In DEBUG mode, each scope that was not disposed is reported (in RELEASE mode, the outer scope reports it once).
+        [Test]
+        public void CausalityTraceScope_OuterDisposedBeforeTwoNestedScopes_EachNestedScopeIsReportedOnceWithWhereItWasEntered()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var outerScope = CausalityTrace.EnterScope(CausalityTrace.Capture());
+                    var innerScope = EnterScopeForTraceTest(CausalityTrace.Capture());
+                    var innermostScope = EnterNestedScopeForTraceTest(CausalityTrace.Capture());
+                    outerScope.Dispose();
+                    reports.AssertScopeMisuses("before its nested", "before its nested");
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+
+                    var reportTraces = reports.Exceptions.Select(e => reports.GetTrace(e)).ToArray();
+                    var text = string.Join("\n", reportTraces.Select(t => t?.ToString()));
+                    Assert.AreEqual(1, reportTraces.Count(t => ContainsMethod(t, nameof(EnterScopeForTraceTest))), text);
+                    Assert.AreEqual(1, reportTraces.Count(t => ContainsMethod(t, nameof(EnterNestedScopeForTraceTest))), text);
+
+                    // Disposing them later throws, and doesn't report them again.
+                    AssertDisposeThrows(innermostScope, false);
+                    AssertDisposeThrows(innerScope, false);
+                    reports.AssertScopeMisuses("before its nested", "before its nested");
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
         [Test]
         public void CausalityTraceScope_NullTrace_IsCheckedForBeingDisposedCorrectly()
         {

@@ -430,14 +430,14 @@ namespace Proto.Diagnostics
                     return;
                 }
                 // The checker throws if this dispose is improper.
-                bool hasNestedScopes = _disposedChecker.Dispose(out var nestedScopeTrace);
+                var nestedScopes = _disposedChecker.Dispose();
                 Exit();
-                if (hasNestedScopes)
+                if (nestedScopes != null)
                 {
                     // Reported after the nested scopes were exited (see Exit), instead of when they're collected (see DisposedChecker.Dispose).
-                    // Where the nested scope that was not disposed was entered is more useful than where this scope was entered,
+                    // Where each nested scope that was not disposed was entered is more useful than where this scope was entered,
                     // which is more useful than the trace that was passed (see ReportNestedScopesNotDisposed).
-                    ReportNestedScopesNotDisposed(nestedScopeTrace ?? (_disposedChecker._isPublic ? Promises.Internal.GetTrace(_disposedChecker) : null) ?? _trace);
+                    DisposedChecker.ReportNotDisposed(nestedScopes, (_disposedChecker._isPublic ? Promises.Internal.GetTrace(_disposedChecker) : null) ?? _trace);
                 }
 #else
                 // The common case (not traced) is only a null check.
