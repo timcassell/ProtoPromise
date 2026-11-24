@@ -3477,7 +3477,8 @@ namespace ProtoPromise.Tests.APIs
                         var scope = CausalityTrace.EnterScope(trace);
                         scope.Dispose();
                         exception = GetDisposeException(scope);
-                        traceAfterThrow = CausalityTrace.Capture().Previous;
+                        // Not Capture().Previous, which skips the callback's trace without line numbers (see AssertPreviousTrace).
+                        traceAfterThrow = GetCurrentTraceForTraceTest();
                     });
                     promise.Then(() => isComplete = true).Forget();
 
@@ -3515,7 +3516,8 @@ namespace ProtoPromise.Tests.APIs
                     var promise = deferred.Promise.Then(() =>
                     {
                         // The callback's trace is ProtoPromise's, which it enters itself.
-                        callbackTrace = CausalityTrace.Capture().Previous;
+                        // Not Capture().Previous, which skips it without line numbers (see AssertPreviousTrace).
+                        callbackTrace = GetCurrentTraceForTraceTest();
                         try
                         {
                             CausalityTrace.EnterScope(callbackTrace);
@@ -3524,7 +3526,7 @@ namespace ProtoPromise.Tests.APIs
                         {
                             exception = e;
                         }
-                        traceAfterThrow = CausalityTrace.Capture().Previous;
+                        traceAfterThrow = GetCurrentTraceForTraceTest();
                     });
                     deferred.Resolve();
                     promise.Forget();
