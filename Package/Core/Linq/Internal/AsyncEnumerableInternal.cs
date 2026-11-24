@@ -71,6 +71,29 @@ namespace Proto.Promises
 
         partial class PromiseRefBase
         {
+            // For async iterators (see AsyncEnumerableWithIterator.AwaitOnCompletedForAsyncStreamYielder), non-generic so that it's not compiled for each type of value.
+            // The consumer continues outside of the scope of the async iterator function, the same as the waiter of an async function that completes inside its own scope
+            // (see ScopeExitingWaiter), so that the consumer's code doesn't run in the iterator's scope, and when it moves the iterator forward synchronously,
+            // the iterator doesn't enter its scope again inside the scope of the frame that's yielding.
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            protected void HandleNextOutsideOfIteratorScope(PromiseRefBase asyncPromiseRef)
+            {
+                var exitedScope = Diagnostics.CausalityTrace.ExitScopeIfEntered(asyncPromiseRef);
+                if (exitedScope._trace == null)
+                {
+                    HandleNextInternal(Promise.State.Resolved);
+                    return;
+                }
+                try
+                {
+                    HandleNextInternal(Promise.State.Resolved);
+                }
+                finally
+                {
+                    exitedScope.Dispose();
+                }
+            }
+
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]
 #endif
@@ -341,7 +364,12 @@ namespace Proto.Promises
                     }
                     // Complete the MoveNextAsync promise.
                     _result = hasValue;
-                    HandleNextInternal(Promise.State.Resolved);
+                    if (!Diagnostics.CausalityTrace.IsEnabled)
+                    {
+                        HandleNextInternal(Promise.State.Resolved);
+                        return;
+                    }
+                    HandleNextOutsideOfIteratorScope(asyncPromiseRef);
                 }
 
                 protected abstract void Start(int enumerableId);

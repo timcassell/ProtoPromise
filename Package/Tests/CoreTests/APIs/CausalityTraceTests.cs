@@ -812,13 +812,18 @@ namespace ProtoPromise.Tests.APIs
                 deferred2.Resolve();
 
                 Assert.IsNotNull(asyncTrace);
+#if PROTO_PROMISE_DEVELOPER_MODE
+                // In developer mode, the optimized async mode has no first await trace, because it would be the async promise's trace (see CausalityTrace.GetCopyWithAllFrames).
+                Assert.AreEqual(awaitTraces & !IsInOptimizedAsyncMode(promise), firstAwaitTrace != null);
+#else
                 Assert.AreEqual(awaitTraces, firstAwaitTrace != null);
+#endif
+                Assert.AreNotSame(asyncTrace, firstAwaitTrace);
                 // Where it first awaited may contain where it was called, but the async promise's trace is still the cause
                 // (unless it's skipped without line numbers, see AssertPreviousTrace), and where it first awaited is an outer trace that only prints the frames that it doesn't share with it,
-                // unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod),
-                // or it's the async promise's trace (see the developer mode case below).
+                // unless it's dropped like the frames of this method (see KeepsOuterTracesFromTheSameMethod).
                 AssertPreviousTrace(asyncTrace, traceAfterFirstAwait);
-                if (firstAwaitTrace != null && firstAwaitTrace != asyncTrace && KeepsOuterTracesFromTheSameMethod)
+                if (firstAwaitTrace != null && KeepsOuterTracesFromTheSameMethod)
                 {
                     CollectionAssert.Contains(traceAfterFirstAwait.OuterTraces, firstAwaitTrace, traceAfterFirstAwait.ToString());
                 }
@@ -833,8 +838,7 @@ namespace ProtoPromise.Tests.APIs
                 }
                 else if (KeepsOuterTracesFromTheSameMethod)
                 {
-                    // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames), which is already the previous trace.
-                    bool hasFirstAwaitTrace = firstAwaitTrace != null && firstAwaitTrace != asyncTrace;
+                    bool hasFirstAwaitTrace = firstAwaitTrace != null;
                     Assert.AreEqual((configureFirstAwaitToForeground ? 1 : 0) + (hasFirstAwaitTrace ? 1 : 0), traceAfterFirstAwait.OuterTraces.Count, traceAfterFirstAwait.ToString());
                 }
                 // Otherwise it's dropped, unless Deferred.Resolve's frame is printed with another function's name (see MayPrintHiddenFramesWithOtherNames),
@@ -952,6 +956,70 @@ namespace ProtoPromise.Tests.APIs
                 CausalityTrace.IsEnabled = false;
             }
         }
+
+        [Test]
+        public void AsyncIterator_YieldsInsideAScopeThatWasNotDisposed_ItIsReportedAndTheIteratorContinuesInItsOwnScope()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var deferred = NewVoidDeferredForTraceTest();
+                    CausalityTrace iteratorScope = null;
+                    CausalityTrace iteratorScopeAfterYield = null;
+                    var items = new List<int>();
+
+                    var enumerable = Proto.Promises.Linq.AsyncEnumerable<int>.Create(async (writer, cancelationToken) =>
+                    {
+                        await writer.YieldAsync(1);
+                        await deferred.Promise;
+                        iteratorScope = GetCurrentTraceForTraceTest();
+                        EnterScopeWithoutDisposingItForTraceTest();
+                        // The consumer continues synchronously and moves it forward, so it continues while the frame that yielded is still running.
+                        await writer.YieldAsync(2);
+                        iteratorScopeAfterYield = GetCurrentTraceForTraceTest();
+                    });
+
+                    // The enumerator is used directly instead of await foreach, which requires C# 8.
+                    async Promise Consume()
+                    {
+                        var enumerator = enumerable.GetAsyncEnumerator();
+                        try
+                        {
+                            while (await enumerator.MoveNextAsync())
+                            {
+                                items.Add(enumerator.Current);
+                            }
+                        }
+                        finally
+                        {
+                            await enumerator.DisposeAsync();
+                        }
+                    }
+
+                    Consume().Forget();
+                    deferred.Resolve();
+
+                    CollectionAssert.AreEqual(new[] { 1, 2 }, items);
+                    Assert.IsNotNull(iteratorScope);
+                    // The scope that was not disposed was exited where it yielded, so it continues in its own scope.
+                    Assert.AreSame(iteratorScope, iteratorScopeAfterYield);
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+                    reports.AssertScopeMisuses("before its nested");
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        private static void EnterScopeWithoutDisposingItForTraceTest()
+            => EnterScopeWithoutDisposingItForTraceTest(CausalityTrace.Capture());
+
+        private static void EnterScopeWithoutDisposingItForTraceTest(CausalityTrace trace)
+            => CausalityTrace.EnterScope(trace);
 
         [Test]
         public void AsyncPromise_ResumedOnAContextWhileTracingIsDisabled_CompletesAfterItIsEnabledAgain()
@@ -2682,7 +2750,7 @@ namespace ProtoPromise.Tests.APIs
                 var pending = new Queue<Promise.Deferred>();
                 var promise = AwaitRecursivelyForTraceTest(deferred.Promise, 16, traces, awaitBefore ? pending : null);
 #if PROTO_PROMISE_DEVELOPER_MODE
-                // In developer mode, the optimized async mode's first await trace is the async promise's trace (see CausalityTrace.GetWithAllFrames),
+                // In developer mode, the optimized async mode has no first await trace, because it would be the async promise's trace (see CausalityTrace.GetCopyWithAllFrames),
                 // so without an await before, where it awaited isn't an outer trace.
                 bool hasAwaitTrace = awaitTraces & (awaitBefore | !IsInOptimizedAsyncMode(promise));
 #else
@@ -3337,6 +3405,144 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void CausalityTraceScope_EnteredWhileItsTraceIsEntered_IsCurrentUntilItIsDisposed()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var outerTrace = CaptureAtOther();
+                    var innerTrace = CaptureAtStep();
+                    var outerScope = CausalityTrace.EnterScope(outerTrace);
+                    var innerScope = CausalityTrace.EnterScope(innerTrace);
+                    var reenteredScope = CausalityTrace.EnterScope(outerTrace);
+                    Assert.AreSame(outerTrace, CausalityTrace.Capture().Previous);
+                    reenteredScope.Dispose();
+                    Assert.AreSame(innerTrace, CausalityTrace.Capture().Previous);
+                    innerScope.Dispose();
+                    Assert.AreSame(outerTrace, CausalityTrace.Capture().Previous);
+                    outerScope.Dispose();
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+                    reports.AssertScopeMisuses();
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceScope_DisposedBeforeANestedScopeThatEnteredItsOuterTraceAgain_ExitsToItsOuterScopeAndReportsIt()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var outerTrace = CaptureAtOther();
+                    var innerTrace = CaptureAtStep();
+                    var outerScope = CausalityTrace.EnterScope(outerTrace);
+                    var innerScope = CausalityTrace.EnterScope(innerTrace);
+                    EnterScopeWithoutDisposingItForTraceTest(outerTrace);
+                    innerScope.Dispose();
+                    Assert.AreSame(outerTrace, CausalityTrace.Capture().Previous);
+                    outerScope.Dispose();
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+                    reports.AssertScopeMisuses("before its nested");
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceScope_DisposedTwiceInACallbackWhileItsTraceIsEnteredOutsideOfIt_ThrowsAndTheCallbackCompletes()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var trace = CaptureAtOther();
+                    var deferred = Promise.NewDeferred();
+                    System.Exception exception = null;
+                    CausalityTrace traceAfterThrow = null;
+                    bool isComplete = false;
+                    var promise = deferred.Promise.Then(() =>
+                    {
+                        var scope = CausalityTrace.EnterScope(trace);
+                        scope.Dispose();
+                        exception = GetDisposeException(scope);
+                        traceAfterThrow = CausalityTrace.Capture().Previous;
+                    });
+                    promise.Then(() => isComplete = true).Forget();
+
+                    var outerScope = CausalityTrace.EnterScope(trace);
+                    deferred.Resolve();
+                    Assert.AreSame(trace, CausalityTrace.Capture().Previous);
+                    outerScope.Dispose();
+
+                    Assert.IsInstanceOf<System.InvalidOperationException>(exception);
+                    Assert.IsNotNull(traceAfterThrow);
+                    Assert.AreNotSame(trace, traceAfterThrow);
+                    Assert.IsTrue(isComplete);
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+                    reports.AssertScopeMisuses();
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
+        public void CausalityTraceScope_EnteredWithATraceThatWasNotCaptured_ThrowsAndDoesNotChangeTheCurrentScope()
+        {
+            CausalityTrace.IsEnabled = true;
+            try
+            {
+                using (var reports = new ReportedExceptions())
+                {
+                    var deferred = Promise.NewDeferred();
+                    CausalityTrace callbackTrace = null;
+                    System.Exception exception = null;
+                    CausalityTrace traceAfterThrow = null;
+                    var promise = deferred.Promise.Then(() =>
+                    {
+                        // The callback's trace is ProtoPromise's, which it enters itself.
+                        callbackTrace = CausalityTrace.Capture().Previous;
+                        try
+                        {
+                            CausalityTrace.EnterScope(callbackTrace);
+                        }
+                        catch (System.Exception e)
+                        {
+                            exception = e;
+                        }
+                        traceAfterThrow = CausalityTrace.Capture().Previous;
+                    });
+                    deferred.Resolve();
+                    promise.Forget();
+
+                    Assert.IsNotNull(callbackTrace);
+                    Assert.IsInstanceOf<System.ArgumentException>(exception);
+                    Assert.AreSame(callbackTrace, traceAfterThrow);
+                    Assert.IsNull(CausalityTrace.Capture().Previous);
+                    reports.AssertScopeMisuses();
+                }
+            }
+            finally
+            {
+                CausalityTrace.IsEnabled = false;
+            }
+        }
+
+        [Test]
         public void CausalityTraceScope_OuterDisposedBeforeInner_IsReportedAndExitsTheInnerScope_InnerDisposeThrows()
         {
             CausalityTrace.IsEnabled = true;
@@ -3795,7 +4001,7 @@ namespace ProtoPromise.Tests.APIs
         }
 
         // Skips every frame, like a trace whose frames are all hidden.
-        private static CausalityTrace CaptureWithoutFrames() => new CausalityTrace(1000);
+        private static CausalityTrace CaptureWithoutFrames() => CausalityTrace.Capture(1000);
 #endif
 
         [Test]

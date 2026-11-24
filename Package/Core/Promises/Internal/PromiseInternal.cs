@@ -163,7 +163,7 @@ namespace Proto.Promises
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void SetTraceAndSentinel()
             {
-                SetTrace(this, Diagnostics.CausalityTrace.Capture());
+                SetTrace(this, Diagnostics.CausalityTrace.CaptureInternal());
                 ContinuationContext = TracedSentinel.s_instance;
             }
 
@@ -172,29 +172,19 @@ namespace Proto.Promises
             // (they catch all of its exceptions), so that the common path doesn't pay for a try/finally.
             // It's not generic over the callback, so the invoke methods don't need a traced copy, which AOT compilers (e.g. IL2CPP)
             // would generate for every callback type. NoInlining to keep the invoke methods small.
-            // The scope is boxed, because a Scope local makes the common path slower (see CausalityTrace.Scope.Box). It's null if there's no trace
-            // (e.g. causality traces were disabled since the promise was created).
+            // The scope is the default value if there's no trace (e.g. causality traces were disabled since the promise was created).
             // The field is shared with RejectContainer, so the sentinel is cleared when the scope is entered.
             [MethodImpl(MethodImplOptions.NoInlining)]
-            protected Diagnostics.CausalityTrace.Scope.Box EnterTracedScopeAndClearSentinel()
+            protected Diagnostics.CausalityTrace.InternalScope EnterTracedScopeAndClearSentinel()
             {
                 var trace = Trace;
                 ContinuationContext = null;
-                return trace == null ? null : new Diagnostics.CausalityTrace.Scope.Box(Diagnostics.CausalityTrace.EnterScopeInternal(trace));
+                return trace == null ? default : Diagnostics.CausalityTrace.EnterScopeInternal(trace);
             }
 
+            // In RELEASE mode, it's only a null check, and the scope is exited in a NoInlining method (see CausalityTrace.InternalScope.Exit).
             [MethodImpl(InlineOption)]
-            protected static void ExitTracedScope(Diagnostics.CausalityTrace.Scope.Box scope)
-            {
-                if (scope != null)
-                {
-                    ExitTracedScopeCore(scope);
-                }
-            }
-
-            // NoInlining to keep the invoke methods small.
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            private static void ExitTracedScopeCore(Diagnostics.CausalityTrace.Scope.Box scope)
+            protected static void ExitTracedScope(in Diagnostics.CausalityTrace.InternalScope scope)
                 => scope.Dispose();
 
             [MethodImpl(InlineOption)]

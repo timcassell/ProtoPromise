@@ -282,7 +282,7 @@ namespace Proto.Diagnostics
             }
             // Clamped so that adding this frame (here and in the constructor) doesn't overflow, nor do the frames that Mono's StackTrace adds to it (Mono crashes if it overflows).
             // A count that large skips every frame either way.
-            return s_isEnabled ? new CausalityTrace(Math.Min(skipFrames, int.MaxValue / 2) + 1) : null;
+            return s_isEnabled ? new CausalityTrace(Math.Min(skipFrames, int.MaxValue / 2) + 1, true) : null;
         }
 
         /// <summary>
@@ -291,7 +291,7 @@ namespace Proto.Diagnostics
         /// <returns>The captured <see cref="CausalityTrace"/>, or <see langword="null"/> if <see cref="IsEnabled"/> is <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static CausalityTrace Capture()
-            => s_isEnabled ? new CausalityTrace(1) : null;
+            => s_isEnabled ? new CausalityTrace(1, true) : null;
 
         /// <summary>
         /// A group of earlier traces that were folded into a <see cref="CausalityTrace"/> (see <see cref="Repeats"/>), which were captured on the same thread,
@@ -381,6 +381,8 @@ namespace Proto.Diagnostics
         /// If it is <see langword="null"/>, the current causality trace is not changed, but the returned <see cref="Scope"/> must still be disposed.
         /// </param>
         /// <returns>A <see cref="Scope"/> that restores the previous causality trace when it is disposed.</returns>
+        /// <exception cref="ArgumentException"><paramref name="trace"/> was not captured with <see cref="Capture()"/> or <see cref="Capture(int)"/>, but by ProtoPromise
+        /// (e.g. it's the <see cref="Previous"/> trace of a trace that was captured in a ProtoPromise callback), which enters the scopes of its own traces.</exception>
         /// <remarks>
         /// Dispose the returned <see cref="Scope"/> with a <see langword="using"/> statement (C# 8 or later) or a <see langword="try"/>/<see langword="finally"/> block.
         /// Nested scopes must be disposed before outer scopes.
@@ -390,16 +392,15 @@ namespace Proto.Diagnostics
         /// Disposing a <see cref="Scope"/> before its nested scopes (e.g. a callback entered a scope without disposing it) is reported to <see cref="Promises.Promise.Config.UncaughtRejectionHandler"/>,
         /// and the nested scopes are also exited, so that the current causality trace is restored (if <paramref name="trace"/> is <see langword="null"/>, only in DEBUG mode while causality traces are enabled).
         /// </remarks>
-        // In RELEASE mode, a null trace is only a null check. In DEBUG mode, every scope is checked for being disposed correctly,
-        // and while causality traces are enabled, remembers where it was entered to report it if it's never disposed (see DisposedChecker).
-        // While they're disabled, a null trace is only a null check in DEBUG mode too, because the checker allocates, and a scope may be entered for every callback.
         [MethodImpl(Promises.Internal.InlineOption)]
         public static Scope EnterScope(CausalityTrace trace)
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            => trace != null || s_isEnabled ? new Scope(trace, true) : default;
-#else
-            => trace != null ? new Scope(trace, true) : default;
-#endif
+        {
+            if (trace?._isCapturedByUsers == false)
+            {
+                ThrowNotCapturedByUsers();
+            }
+            return EnterCheckedScope(trace, true);
+        }
 
         /// <summary>
         /// A scope in which a <see cref="CausalityTrace"/> is current, used while running an async callback or continuation. Created by <see cref="EnterScope(CausalityTrace)"/>.
@@ -441,7 +442,7 @@ namespace Proto.Diagnostics
                 }
 #else
                 // The common case (not traced) is only a null check.
-                if (_traces == null)
+                if (_trace == null)
                 {
                     return;
                 }

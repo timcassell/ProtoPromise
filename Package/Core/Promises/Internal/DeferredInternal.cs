@@ -292,7 +292,7 @@ namespace Proto.Promises
                     _runner = default;
 
                     // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
-                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                     try
                     {
                         runner.Invoke(this);

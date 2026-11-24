@@ -34,7 +34,7 @@ namespace Proto.Promises
         partial class PromiseRefBase
         {
             // The trace of where a traced async function last awaited, which is entered outside of its own trace when it continues (see MoveNextInScope),
-            // like the trace of where a callback was scheduled (see ScheduleContextCallback), or null. Its scope is exited with the async promise's scope (see CausalityTrace.ExitScopeIfCurrent).
+            // like the trace of where a callback was scheduled (see ScheduleContextCallback), or null. Its scope is exited with the async promise's scope (see CausalityTrace.ExitScopeIfEntered).
             // It's null for other promises.
             internal virtual CausalityTrace EnteredAwaitTrace => null;
 
@@ -85,7 +85,7 @@ namespace Proto.Promises
 
                 internal override void Handle(PromiseRefBase handler, Promise.State state)
                 {
-                    var exitedScope = CausalityTrace.ExitScopeIfCurrent(handler);
+                    var exitedScope = CausalityTrace.ExitScopeIfEntered(handler);
                     if (exitedScope._trace == null)
                     {
                         _waiter.Handle(handler, state);
@@ -328,7 +328,7 @@ namespace Proto.Promises
                         // The first await captures where it awaits too, because its async promise's own trace was captured where it was called, before its body ran.
                         if (Promise.Config.AwaitTracesEnabled)
                         {
-                            _awaitTrace = CausalityTrace.Capture();
+                            _awaitTrace = CausalityTrace.CaptureInternal();
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }
@@ -777,8 +777,8 @@ namespace Proto.Promises
                         {
                             // The async promise's own trace was just captured where it first awaits, without the async function's frame (see Create),
                             // so the first await shares that capture with all of its frames, instead of capturing the same stack again.
-                            // Trace is null if causality traces were disabled since then.
-                            _awaitTrace = isFirstAwait ? Trace?.GetWithAllFrames() : CausalityTrace.Capture();
+                            // It's null if no frames were dropped, or if causality traces were disabled since then.
+                            _awaitTrace = isFirstAwait ? Trace?.GetCopyWithAllFrames() : CausalityTrace.CaptureInternal();
                         }
                         base.CaptureAwaitContextAndOrTrace(isFirstAwait);
                     }

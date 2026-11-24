@@ -38,7 +38,7 @@ namespace Proto.Promises
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static void ScheduleContextCallbackInScope(SynchronizationContext context, object state, SendOrPostCallback contextCallback, WaitCallback threadpoolCallback)
             => ScheduleContextCallbackDirect(context,
-                new ScopedContextCallback(state, contextCallback, threadpoolCallback, CausalityTrace.Capture()),
+                new ScopedContextCallback(state, contextCallback, threadpoolCallback, CausalityTrace.CaptureInternal()),
                 ScopedContextCallback.s_contextCallback, ScopedContextCallback.s_threadpoolCallback);
 
         // Schedules the callback without capturing where it was scheduled. Used for callbacks that are scheduled when their object is created
@@ -177,7 +177,7 @@ namespace Proto.Promises
             // The exception may have been rethrown, so we use the trace of where it was originally rejected or thrown (see ExceptionRejectionContainer).
             if (!TryGetExceptionTrace(exception, out var trace))
             {
-                trace = CausalityTrace.Capture();
+                trace = CausalityTrace.CaptureInternal();
             }
             ReportUnhandledValue(exception, trace);
         }
@@ -254,7 +254,7 @@ namespace Proto.Promises
         internal static void ReportUnhandledException(UnhandledException exception)
         {
 #if PROTO_PROMISE_DEVELOPER_MODE
-            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1), exception);
+            exception = new UnhandledExceptionInternal(exception.Value, "Unhandled Exception added at (stacktrace in this exception)", new Proto.Diagnostics.CausalityTrace(1, false), exception);
 #endif
             // Send to the handler if it exists.
             Action<UnhandledException> handler = Promise.Config.UncaughtRejectionHandler;

@@ -222,7 +222,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, TResult>
                 {
                     // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
-                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                     Promise.State state;
                     try
                     {
@@ -278,7 +278,7 @@ namespace Proto.Promises
                 where TDelegate : IFunc<TArg, Promise>
             {
                 // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
-                var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                 Promise.State state;
                 try
                 {
@@ -344,7 +344,7 @@ namespace Proto.Promises
                     where TDelegate : IFunc<TArg, Promise<TResult>>
                 {
                     // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
-                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                     Promise.State state;
                     try
                     {

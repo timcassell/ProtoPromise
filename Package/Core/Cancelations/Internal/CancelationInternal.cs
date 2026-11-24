@@ -1153,7 +1153,7 @@ namespace Proto.Promises
             // It's not captured if the parent is already canceled or disposed, because no node will be created (a parent never becomes pending again with the same token id).
             [MethodImpl(InlineOption)]
             private static CausalityTrace CaptureNodeTrace(CancelationRef parent)
-                => parent.IsPending() ? CausalityTrace.Capture() : null;
+                => parent.IsPending() ? CausalityTrace.CaptureInternal() : null;
 
 #if !PROTO_PROMISE_DEVELOPER_MODE
             [DebuggerNonUserCode, StackTraceHidden]

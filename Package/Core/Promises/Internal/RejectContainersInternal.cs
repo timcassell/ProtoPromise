@@ -48,7 +48,7 @@ namespace Proto.Promises
             // and the code that rejected a deferred is on the stack.
             protected void SetCausalityTrace(bool captureTrace, object traceable)
                 => _causalityTrace = CausalityTrace.IsEnabled & captureTrace
-                    ? CausalityTrace.Capture()
+                    ? CausalityTrace.CaptureInternal()
                     : GetTrace(traceable);
 
             public abstract object Value { get; }

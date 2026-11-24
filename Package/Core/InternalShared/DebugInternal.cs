@@ -183,7 +183,7 @@ namespace Proto.Promises
             {
                 return;
             }
-            SetTrace(obj, CausalityTrace.Capture());
+            SetTrace(obj, CausalityTrace.CaptureInternal());
         }
 
         static partial void SetPrevious(this PromiseRefBase promise, PromiseRefBase previous);

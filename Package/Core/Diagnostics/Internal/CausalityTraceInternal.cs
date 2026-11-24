@@ -56,6 +56,10 @@ namespace Proto.Diagnostics
         private readonly string _threadName;
         private readonly bool _isThreadPoolThread;
         private readonly bool _isBackgroundThread;
+        // Whether users captured it (see Capture), so that only users can enter its scope (see EnterScope). The library only enters the scopes of its own traces,
+        // so a trace is never entered by both, and the innermost entry of the library's trace is its own scope's (see InternalScope).
+        // Copies keep it: a copy is another object, and the library never enters a copy of a user's trace.
+        internal readonly bool _isCapturedByUsers;
         private readonly long _timestamp;
         // The most recent truncated copy of this trace, so that captures in the same scope share it instead of copying it again.
         private TruncatedCopy _truncatedCopy;
@@ -169,13 +173,19 @@ namespace Proto.Diagnostics
         // (except that while the ExecutionContext flows, the runtime's frames that started it on its ExecutionContext are before it).
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static CausalityTrace CaptureWithoutInnermostVisibleFrame(Type asyncStateMachineType)
-            => s_isEnabled ? new CausalityTrace(1, asyncStateMachineType) : null;
+            => s_isEnabled ? new CausalityTrace(1, false, asyncStateMachineType) : null;
+
+        // For the library's own traces, which users can't enter (see _isCapturedByUsers).
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        internal static CausalityTrace CaptureInternal()
+            => s_isEnabled ? new CausalityTrace(1, false) : null;
 
         // Internal so that it can be captured regardless of IsEnabled.
         // If asyncStateMachineType is not null, the async function's frame is dropped (see CaptureWithoutInnermostVisibleFrame).
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal CausalityTrace(int skipFrames, Type asyncStateMachineType = null)
+        internal CausalityTrace(int skipFrames, bool isCapturedByUsers, Type asyncStateMachineType = null)
         {
+            _isCapturedByUsers = isCapturedByUsers;
             _timestamp = TimeProvider.System.GetTimestamp();
             var thread = Thread.CurrentThread;
             _threadId = thread.ManagedThreadId;
@@ -268,7 +278,7 @@ namespace Proto.Diagnostics
                     isInnermost = false;
                     continue;
                 }
-                // The previous trace may be skipped (see IsContainedBy), but an outer trace that repeats it is still already printed in this trace.
+                // The previous trace may be skipped (see IsContainedBy), but an outer trace that is it (its scope was entered again inside it), or repeats it, is still already printed in this trace.
                 if (trace == previous || trace.IsRepeatOf(previous))
                 {
                     continue;
@@ -471,6 +481,7 @@ namespace Proto.Diagnostics
         // its outer traces, and its repeats. Internal so that tests can build traces with the same stack trace.
         internal CausalityTrace(CausalityTrace trace, CausalityTrace previous, bool isTruncated)
         {
+            _isCapturedByUsers = trace._isCapturedByUsers;
             _stackTrace = trace._stackTrace;
             _firstFrame = trace._firstFrame;
             _threadId = trace._threadId;
@@ -490,6 +501,7 @@ namespace Proto.Diagnostics
         // A copy without its previous traces or its repeats.
         private CausalityTrace(CausalityTrace trace)
         {
+            _isCapturedByUsers = trace._isCapturedByUsers;
             _stackTrace = trace._stackTrace;
             _firstFrame = trace._firstFrame;
             _threadId = trace._threadId;
@@ -503,18 +515,21 @@ namespace Proto.Diagnostics
             _depth = 1;
         }
 
-        // Whether the other trace prints all of this trace's frames, because they're copies of the same capture, and it doesn't drop more of its frames (see GetWithAllFrames).
+        // Whether the other trace prints all of this trace's frames, because they're copies of the same capture, and it doesn't drop more of its frames (see GetCopyWithAllFrames).
         private bool IsPrintedBy(CausalityTrace other)
             => _stackTrace == other._stackTrace && other._firstFrame <= _firstFrame;
 
         // For where an async function first awaited in the optimized async mode, which is where its trace was captured without the async function's frame
         // (see CaptureWithoutInnermostVisibleFrame), so it shares that capture with all of its frames, instead of capturing the same stack again.
-        internal CausalityTrace GetWithAllFrames()
-            => _firstFrame == 0 ? this : new CausalityTrace(this, 0);
+        // Null if no frames were dropped (e.g. in developer mode, which doesn't drop frames), because it would print the same as the async promise's trace,
+        // whose scope is already entered when the async function continues (see AsyncPromiseRef.MoveNextInScope).
+        internal CausalityTrace GetCopyWithAllFrames()
+            => _firstFrame == 0 ? null : new CausalityTrace(this, 0);
 
         // A copy with another first frame, which isn't printed the same, so its signature isn't shared.
         private CausalityTrace(CausalityTrace trace, int firstFrame)
         {
+            _isCapturedByUsers = trace._isCapturedByUsers;
             _stackTrace = trace._stackTrace;
             _firstFrame = firstFrame;
             _threadId = trace._threadId;
@@ -883,14 +898,40 @@ namespace Proto.Diagnostics
             => sb.Append(new StackTrace(frame).ToString().TrimEnd('\r', '\n')).AppendLine();
 
         // For the library's own scopes, which are always disposed, in finally blocks or where they can't be skipped (e.g. after a catch block that catches the callback's exceptions).
-        // Disposing them never throws: the library disposes each one once, in the function that entered it (or through its Box, which only the library holds),
+        // Disposing them never throws: the library disposes each one once, in the function that entered it,
         // and the code that runs inside it can't dispose a scope that was entered outside of it (a Scope is a ref struct, so it can't be captured or stored).
         // Only scopes that users enter (see EnterScope) can be disposed more than once or after their outer scope, which throws (see DisposedChecker.Dispose and Exit).
         // Nested scopes that were not disposed (e.g. a callback entered a scope without disposing it) are exited along with it and reported, without throwing.
+        // A trace may be entered again inside its own scope (e.g. a Progress that reports to itself synchronously, or a callback that runs synchronously in the scope where it was registered).
+        // In developer mode, its scopes are checked the same as users' scopes (see EnterCheckedScope), so that a scope that the library disposes improperly asserts (see DisposedChecker.Dispose).
         // The common case (not traced) is only a null check, so that types that store their own trace can call this on their fast paths.
         [MethodImpl(Promises.Internal.InlineOption)]
-        internal static Scope EnterScopeInternal(CausalityTrace trace)
-            => trace != null ? new Scope(trace, false) : default;
+        internal static InternalScope EnterScopeInternal(CausalityTrace trace)
+#if PROTO_PROMISE_DEVELOPER_MODE
+            => new InternalScope(EnterCheckedScope(trace, false));
+#elif PROMISE_DEBUG
+            => new InternalScope(trace != null ? new Scope(trace, false) : default);
+#else
+            => trace != null ? new InternalScope(trace) : default;
+#endif
+
+        // A scope that's checked for being disposed correctly (see DisposedChecker and Exit). isPublic is whether users entered it (see EnterScope).
+        // In RELEASE mode, a null trace is only a null check. In DEBUG mode, every scope is checked for being disposed correctly,
+        // and while causality traces are enabled, remembers where it was entered to report it if it's never disposed (see DisposedChecker).
+        // While they're disabled, a null trace is only a null check in DEBUG mode too, because the checker allocates, and a scope may be entered for every callback.
+        [MethodImpl(Promises.Internal.InlineOption)]
+        private static Scope EnterCheckedScope(CausalityTrace trace, bool isPublic)
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            => trace != null || s_isEnabled ? new Scope(trace, isPublic) : default;
+#else
+            => trace != null ? new Scope(trace, isPublic) : default;
+#endif
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowNotCapturedByUsers()
+            => throw new Promises.InvalidArgumentException("trace",
+                $"Only a {nameof(CausalityTrace)} that was captured with {nameof(CausalityTrace)}.{nameof(Capture)} can be entered. ProtoPromise enters the scopes of its own traces.",
+                Promises.Internal.GetFormattedStacktrace());
 
         // Whether trace is the scope that is entered on this thread.
         internal static bool IsCurrentScope(CausalityTrace trace)
@@ -899,7 +940,7 @@ namespace Proto.Diagnostics
             return traces?.Count > 0 && traces.Peek() == trace;
         }
 
-        // A scope that was exited without disposing its Scope, until it's restored by disposing this (see ExitScopeIfCurrent).
+        // A scope that was exited without disposing its Scope, until it's restored by disposing this (see ExitScopeIfEntered).
         // Disposing a default value does nothing.
 #if !PROTO_PROMISE_DEVELOPER_MODE
         [DebuggerNonUserCode, StackTraceHidden]
@@ -923,7 +964,7 @@ namespace Proto.Diagnostics
             {
                 if (_trace == null)
                 {
-                    // Nothing was exited (see ExitScopeIfCurrent).
+                    // Nothing was exited (see ExitScopeIfEntered).
                     return;
                 }
                 var traces = ts_traces;
@@ -959,23 +1000,54 @@ namespace Proto.Diagnostics
             }
         }
 
-        // Exits the scope of the promise's trace if it's the current scope, until the result is disposed, without disposing its Scope
-        // (see PromiseRefBase.ScopeExitingWaiter). The result's trace is null if it's not the current scope.
+        // Exits the scope of the async promise's trace if it's entered, until the result is disposed, without disposing its Scope, where its body completed it or yielded
+        // (see PromiseRefBase.ScopeExitingWaiter and PromiseRefBase.HandleNextOutsideOfIteratorScope). The result's trace is null if it's not entered.
+        // It exits the same as disposing its Scope there would (see Scope.Exit): scopes that are still entered inside it were entered in its body and not disposed,
+        // because the library's scopes are disposed before its body continues, and a Scope can't be kept across an await (it's a ref struct).
+        // So they're exited with it and reported, so that its trace is not still entered when the async function continues.
         // The scope of where an async promise last awaited is exited with it, if it's entered just outside of it (see PromiseRefBase.EnteredAwaitTrace).
-        internal static ExitedScope ExitScopeIfCurrent(Promises.Internal.PromiseRefBase promise)
+        internal static ExitedScope ExitScopeIfEntered(Promises.Internal.PromiseRefBase promise)
         {
             var traces = ts_traces;
-            // The trace is looked up after the stack is checked, so that it's not looked up when no scope is current (e.g. the promise was completed from outside any scope).
+            // The trace is looked up after the stack is checked, so that it's not looked up when no scope is entered (e.g. the promise was completed from outside any scope).
             if (traces == null || traces.Count == 0)
             {
                 return default;
             }
             var trace = promise.Trace;
-            if (trace == null || traces.Peek() != trace)
+            if (trace == null)
             {
                 return default;
             }
+            if (traces.Peek() != trace)
+            {
+                return ExitScopeAndItsNestedScopes(traces, trace, promise);
+            }
             traces.Pop();
+            return ExitAwaitScope(traces, trace, promise);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static ExitedScope ExitScopeAndItsNestedScopes(Stack<CausalityTrace> traces, CausalityTrace trace, Promises.Internal.PromiseRefBase promise)
+        {
+            if (!Contains(traces, trace))
+            {
+                return default;
+            }
+            // Its innermost entry is its own: users can't enter its trace (see _isCapturedByUsers), and the library's scopes inside it were disposed before its body continued.
+            while (traces.Pop() != trace) { }
+            var exitedScope = ExitAwaitScope(traces, trace, promise);
+#if !(PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE)
+            // Reported after they're exited, the same as Scope.Exit. In DEBUG mode, its Scope reports each of them when it's disposed (see Scope.Dispose).
+            Scope.ReportNestedScopesNotDisposed(trace);
+#endif
+            return exitedScope;
+        }
+
+        // Exits the scope of where the async promise last awaited after its own scope was exited, if it's entered just outside of it, and returns them both.
+        [MethodImpl(Promises.Internal.InlineOption)]
+        private static ExitedScope ExitAwaitScope(Stack<CausalityTrace> traces, CausalityTrace trace, Promises.Internal.PromiseRefBase promise)
+        {
             var awaitTrace = promise.EnteredAwaitTrace;
             if (awaitTrace != null && traces.Count > 0 && traces.Peek() == awaitTrace)
             {
@@ -988,11 +1060,24 @@ namespace Proto.Diagnostics
             return new ExitedScope(trace, awaitTrace, traces.Count);
         }
 
+        private static bool Contains(Stack<CausalityTrace> traces, CausalityTrace trace)
+        {
+            foreach (var t in traces)
+            {
+                if (t == trace)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // It can't leave the thread that entered it (it's a ref struct), so it exits the thread's stack of traces (see Exit).
         readonly ref partial struct Scope
         {
-            private readonly Stack<CausalityTrace> _traces;
             private readonly CausalityTrace _trace;
-            // The number of traces on the stack after this scope was entered (including its own trace, if it has one), to find it if nested scopes were not disposed.
+            // The number of traces on the stack after this scope was entered (including its own trace, if it has one), to find its own entry,
+            // even if its trace was entered again in another scope, or nested scopes were not disposed.
             private readonly int _depth;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
             // Copies of the scope share the checker, so that disposing any copy marks them all as disposed.
@@ -1079,7 +1164,7 @@ namespace Proto.Diagnostics
                         throw new System.InvalidOperationException($"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed after its outer {nameof(Scope)}. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.");
                     }
 
-                    // A Scope can't leave the thread that entered it (it's a ref struct, and the library disposes its boxes where it entered them),
+                    // A Scope can't leave the thread that entered it (it's a ref struct),
                     // so this scope is still entered on this thread.
                     var nestedScopes = _inner;
                     for (var nested = nestedScopes; nested != null; nested = nested._inner)
@@ -1119,15 +1204,15 @@ namespace Proto.Diagnostics
             // The trace is not null, except from EnterScope in DEBUG mode. A scope that does nothing is the default value.
             internal Scope(CausalityTrace trace, bool isPublic)
             {
+                var traces = ts_traces;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 // Created before the trace is pushed, so that its trace is where the scope was entered.
                 _disposedChecker = new DisposedChecker(isPublic);
 #endif
-                _traces = ts_traces;
-                if (_traces == null)
+                if (traces == null)
                 {
-                    _traces = new Stack<CausalityTrace>();
-                    ts_traces = _traces;
+                    traces = new Stack<CausalityTrace>();
+                    ts_traces = traces;
                 }
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (trace == null)
@@ -1135,64 +1220,19 @@ namespace Proto.Diagnostics
                     // Nothing to record, but the scope is still checked for being disposed correctly,
                     // and it still exits its nested scopes if they were not disposed (see Exit).
                     _trace = null;
-                    _depth = _traces.Count;
+                    _depth = traces.Count;
                     return;
                 }
 #endif
-                _traces.Push(trace);
+                traces.Push(trace);
                 _trace = trace;
-                _depth = _traces.Count;
-            }
-
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-            private Scope(Stack<CausalityTrace> traces, CausalityTrace trace, int depth, DisposedChecker disposedChecker)
-            {
-                _disposedChecker = disposedChecker;
-#else
-            private Scope(Stack<CausalityTrace> traces, CausalityTrace trace, int depth)
-            {
-#endif
-                _traces = traces;
-                _trace = trace;
-                _depth = depth;
-            }
-
-            // A scope that is kept in an object, for the library's callback invokes. A Scope local (unlike a reference local) makes their untraced path slower,
-            // even when it's only the default value (see PromiseRefBase.EnterTracedScopeAndClearSentinel).
-#if !PROTO_PROMISE_DEVELOPER_MODE
-            [DebuggerNonUserCode, StackTraceHidden]
-#endif
-            internal sealed class Box
-            {
-                private readonly Stack<CausalityTrace> _traces;
-                private readonly CausalityTrace _trace;
-                private readonly int _depth;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                private readonly DisposedChecker _disposedChecker;
-#endif
-
-                internal Box(in Scope scope)
-                {
-                    _traces = scope._traces;
-                    _trace = scope._trace;
-                    _depth = scope._depth;
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    _disposedChecker = scope._disposedChecker;
-#endif
-                }
-
-                internal void Dispose()
-#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
-                    => new Scope(_traces, _trace, _depth, _disposedChecker).Dispose();
-#else
-                    => new Scope(_traces, _trace, _depth).Dispose();
-#endif
+                _depth = traces.Count;
             }
 
             [MethodImpl(MethodImplOptions.NoInlining)]
             private void Exit()
             {
-                var traces = _traces;
+                var traces = ts_traces;
 #if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
                 if (_trace == null)
                 {
@@ -1262,5 +1302,68 @@ namespace Proto.Diagnostics
                     $"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed before its nested {nameof(Scope)}s. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.",
                     FormatStackTrace(new StackTrace(true))), IsEnabled ? trace : null);
         } // ref struct Scope
+
+        // The library's own scope (see EnterScopeInternal). Disposing a default value does nothing.
+        // In RELEASE mode, it's only its trace, so that a local of it is as cheap as a reference local (see PromiseRefBase.EnterTracedScopeAndClearSentinel).
+        // It doesn't need the depth that a Scope keeps to find its own entry: the library disposes it once, before the code that entered it continues,
+        // and users can't enter its trace (see _isCapturedByUsers), so the innermost entry of its trace is its own (the library's scopes inside it are disposed first).
+        // In DEBUG mode, it's a Scope, so that it's checked for being disposed correctly.
+#if !PROTO_PROMISE_DEVELOPER_MODE
+        [DebuggerNonUserCode, StackTraceHidden]
+#endif
+        internal readonly ref struct InternalScope
+        {
+#if PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE
+            private readonly Scope _scope;
+
+            internal InternalScope(Scope scope)
+                => _scope = scope;
+
+            [MethodImpl(Promises.Internal.InlineOption)]
+            internal void Dispose()
+                => _scope.Dispose();
+#else
+            private readonly CausalityTrace _trace;
+
+            // The trace is not null.
+            internal InternalScope(CausalityTrace trace)
+            {
+                var traces = ts_traces;
+                if (traces == null)
+                {
+                    traces = new Stack<CausalityTrace>();
+                    ts_traces = traces;
+                }
+                traces.Push(trace);
+                _trace = trace;
+            }
+
+            [MethodImpl(Promises.Internal.InlineOption)]
+            internal void Dispose()
+            {
+                // The common case (not traced) is only a null check.
+                if (_trace == null)
+                {
+                    return;
+                }
+                Exit();
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private void Exit()
+            {
+                var traces = ts_traces;
+                if (traces.Peek() == _trace)
+                {
+                    traces.Pop();
+                    return;
+                }
+                // Nested scopes that users entered were not disposed (e.g. a callback entered a scope without disposing it).
+                // They're exited along with it and reported, the same as a Scope (see Scope.Exit).
+                while (traces.Pop() != _trace) { }
+                Scope.ReportNestedScopesNotDisposed(_trace);
+            }
+#endif
+        } // ref struct InternalScope
     } // class CausalityTrace
 } // namespace Proto.Diagnostics

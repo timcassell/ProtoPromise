@@ -55,7 +55,7 @@ namespace Proto.Promises
 
                     // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
                     // The scope is entered before the field is overwritten with the reject container.
-                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
@@ -153,7 +153,7 @@ namespace Proto.Promises
 
                     // Only traced promises have a non-null ContinuationContext here (see ResetWithSentinel and EnterTracedScopeAndClearSentinel).
                     // The scope is entered before the field is overwritten with the reject container.
-                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : null;
+                    var scope = ContinuationContext != null ? EnterTracedScopeAndClearSentinel() : default;
                     _result = handler.GetResult<TResult>();
                     RejectContainer = handler.RejectContainer;
                     handler.SuppressRejection = true;
