@@ -117,7 +117,7 @@ namespace Proto.Promises
                 var awaitScope = CausalityTrace.EnterScopeInternal(trace);
                 try
                 {
-                    // The async promise's trace is null if causality traces were disabled after it was created, so it doesn't enter that scope.
+                    // In RELEASE mode, the async promise's trace is null if causality traces were disabled after it was created, so it doesn't enter that scope (see GetTrace).
                     var scope = CausalityTrace.EnterScopeInternal(asyncPromiseTrace);
                     try
                     {

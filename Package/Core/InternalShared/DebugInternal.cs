@@ -119,10 +119,11 @@ namespace Proto.Promises
             CausalityTrace Trace { get; set; }
         }
 
-        // Returns null if causality traces are disabled, the same as in RELEASE mode.
+        // Objects are never pooled in DEBUG mode, so an object's trace is always its own, and it's kept after causality traces are disabled
+        // (unlike RELEASE mode, which releases the table when they're disabled).
         [MethodImpl(InlineOption)]
         internal static CausalityTrace GetTrace(object obj)
-            => CausalityTrace.IsEnabled ? (obj as ITraceable)?.Trace : null;
+            => (obj as ITraceable)?.Trace;
 
         internal static void SetTrace(ITraceable obj, CausalityTrace trace)
             => obj.Trace = trace;
@@ -175,7 +176,8 @@ namespace Proto.Promises
 #endif // PROMISE_DEBUG
 
         // We don't skip frames, because our own frames are hidden when the trace is formatted, and counting frames is unreliable when methods are inlined.
-        // We don't clear the trace when it's disabled, because GetTrace returns null when it's disabled.
+        // We don't clear the trace when it's disabled, because a stale trace can't be read: in DEBUG mode, objects are never pooled,
+        // and in RELEASE mode, the table is released when causality traces are disabled (see GetTrace).
         [MethodImpl(InlineOption)]
         internal static void SetCreatedStacktrace(TraceableObject obj)
         {

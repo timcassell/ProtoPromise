@@ -364,7 +364,12 @@ namespace Proto.Promises
                     }
                     // Complete the MoveNextAsync promise.
                     _result = hasValue;
+#if PROMISE_DEBUG
+                    // In DEBUG mode, the iterator's trace is kept after causality traces are disabled, so its scope may still be entered (see GetTrace).
+                    if (asyncPromiseRef.Trace == null)
+#else
                     if (!Diagnostics.CausalityTrace.IsEnabled)
+#endif
                     {
                         HandleNextInternal(Promise.State.Resolved);
                         return;

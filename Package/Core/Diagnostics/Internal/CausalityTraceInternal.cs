@@ -1300,7 +1300,7 @@ namespace Proto.Diagnostics
             internal static void ReportNestedScopesNotDisposed(CausalityTrace trace)
                 => Promises.Internal.ReportUnhandledValue(new Promises.InvalidOperationException(
                     $"A {nameof(CausalityTrace)}.{nameof(Scope)} was disposed before its nested {nameof(Scope)}s. Nested {nameof(Scope)}s must be disposed before outer {nameof(Scope)}s.",
-                    FormatStackTrace(new StackTrace(true))), IsEnabled ? trace : null);
+                    FormatStackTrace(new StackTrace(true))), trace);
         } // ref struct Scope
 
         // The library's own scope (see EnterScopeInternal). Disposing a default value does nothing.

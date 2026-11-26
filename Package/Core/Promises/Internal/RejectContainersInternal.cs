@@ -108,6 +108,10 @@ namespace Proto.Promises
                 // The common case (not traced) doesn't access the table.
                 if (!CausalityTrace.IsEnabled)
                 {
+#if PROMISE_DEBUG
+                    // In DEBUG mode, the trace of the promise is kept after causality traces are disabled (see GetTrace).
+                    _causalityTrace = GetTrace(traceable);
+#endif
                     return;
                 }
                 // The exception may have been rethrown from await in an async function, so we use the trace of where it was originally rejected or thrown.
