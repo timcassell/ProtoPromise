@@ -58,7 +58,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<T> Merge<T, TEnumerator>(this TEnumerator sources)
             where TEnumerator : IEnumerator<AsyncEnumerable<T>>
         {
-            ValidateArgument(sources, nameof(sources), 1);
+            ValidateArgument(sources, nameof(sources));
 
             var enumerable = Internal.AsyncEnumerableMergerSync<T, TEnumerator>.GetOrCreate(sources);
             return new AsyncEnumerable<T>(enumerable);

@@ -44,7 +44,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -62,7 +62,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, bool> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreSync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -98,7 +98,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(predicate));
         }
@@ -116,7 +116,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource, TCapture>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate, CancelationToken cancelationToken = default)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreAsync(source.GetAsyncEnumerator(cancelationToken), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -168,7 +168,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, bool> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreSync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }
@@ -203,7 +203,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(predicate));
         }
@@ -220,7 +220,7 @@ namespace Proto.Promises.Linq
         /// <exception cref="ArgumentNullException"><paramref name="predicate"/> is null.</exception>
         public static Promise<bool> AnyAsync<TSource, TCapture>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<bool>> predicate)
         {
-            ValidateArgument(predicate, nameof(predicate), 1);
+            ValidateArgument(predicate, nameof(predicate));
 
             return AnyCoreAsync(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, predicate));
         }

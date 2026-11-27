@@ -33,7 +33,7 @@ namespace Proto.Promises.Linq
         {
             if (size < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(size), "size must be greater than 0.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(size), "size must be greater than 0.", Internal.GetFormattedStacktrace());
             }
 
             return ChunkHelper.ChunkFull(source.GetAsyncEnumerator(), size);
@@ -60,7 +60,7 @@ namespace Proto.Promises.Linq
         {
             if (size < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(size), "size must be greater than 0.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(size), "size must be greater than 0.", Internal.GetFormattedStacktrace());
             }
 
             return allowSameStorage

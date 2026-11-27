@@ -331,7 +331,7 @@ namespace Proto.Promises
                 // This catches nan, which `weight <= 0` does not.
                 if (!(weight > 0))
                 {
-                    throw new ArgumentOutOfRangeException(nameof(weight), "weight must be greater than 0", Internal.GetFormattedStacktrace(1));
+                    throw new ArgumentOutOfRangeException(nameof(weight), "weight must be greater than 0", Internal.GetFormattedStacktrace());
                 }
                 var impl = _impl;
                 return impl != null ? impl.NewToken(weight, _id) : default;
@@ -455,7 +455,7 @@ namespace Proto.Promises
         /// <exception cref="ArgumentOutOfRangeException">The <paramref name="value"/> is not between 0 and 1 inclusive.</exception>
         public void Report(double value)
         {
-            Internal.ValidateProgressValue(value, nameof(value), 1);
+            Internal.ValidateProgressValue(value, nameof(value));
 
             var impl = _impl;
             if (impl == null)
@@ -479,8 +479,8 @@ namespace Proto.Promises
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="minValue"/> or <paramref name="maxValue"/> are not between 0 and 1 inclusive.</exception>
         public ProgressToken Slice(double minValue, double maxValue)
         {
-            Internal.ValidateProgressValue(minValue, nameof(minValue), 1);
-            Internal.ValidateProgressValue(maxValue, nameof(maxValue), 1);
+            Internal.ValidateProgressValue(minValue, nameof(minValue));
+            Internal.ValidateProgressValue(maxValue, nameof(maxValue));
 
             return new ProgressToken(
                 _impl,

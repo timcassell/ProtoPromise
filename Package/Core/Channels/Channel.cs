@@ -40,7 +40,7 @@ namespace Proto.Promises.Channels
         {
             if (options.Capacity < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(options), "Capacity must be greater than zero.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(options), "Capacity must be greater than zero.", Internal.GetFormattedStacktrace());
             }
             return new Channel<T>(Internal.BoundedChannel<T>.GetOrCreate(options.Capacity, options.FullMode));
         }

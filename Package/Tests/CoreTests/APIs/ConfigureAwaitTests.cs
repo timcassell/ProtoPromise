@@ -61,7 +61,7 @@ namespace ProtoPromise.Tests.APIs
             bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
@@ -117,7 +117,7 @@ namespace ProtoPromise.Tests.APIs
             bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var threadHelper = new ThreadHelper();
@@ -164,6 +164,63 @@ namespace ProtoPromise.Tests.APIs
         }
 
         [Test]
+        public void AsyncFunction_AfterItCatchesAnInvalidConfiguredAwait_ContinuesNormallyAfterItsNextAwait(
+            [Values] bool nextAwaitIsConfigured,
+            [Values] bool asyncFlowExecutionContext)
+        {
+            // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
+
+            var foregroundThread = Thread.CurrentThread;
+            var firstDeferred = Promise.NewDeferred();
+            var forgottenDeferred = Promise.NewDeferred();
+            var deferred = Promise.NewDeferred();
+            bool caught = false;
+            bool continued = false;
+
+            async Promise Func()
+            {
+                // The first await that doesn't complete synchronously moves the state machine into the async promise, which it continues in after that.
+                // If the exception was thrown before that, the async function would catch it in the state machine that it started with.
+                await firstDeferred.Promise;
+
+                var forgottenPromise = forgottenDeferred.Promise;
+                forgottenPromise.Forget();
+                try
+                {
+                    await forgottenPromise.ConfigureAwait(ContinuationOptions.Foreground);
+                }
+                catch (System.InvalidOperationException)
+                {
+                    caught = true;
+                }
+
+                if (nextAwaitIsConfigured)
+                {
+                    await deferred.Promise.ConfigureAwait(ContinuationOptions.Foreground);
+                }
+                else
+                {
+                    await deferred.Promise;
+                }
+                Assert.AreEqual(foregroundThread, Thread.CurrentThread);
+                continued = true;
+            }
+
+            Func().Forget();
+            firstDeferred.Resolve();
+            Assert.IsTrue(caught);
+
+            deferred.Resolve();
+            // The configured await continues on the foreground context, and the other await continues synchronously.
+            Assert.AreEqual(!nextAwaitIsConfigured, continued);
+            TestHelper.ExecuteForegroundCallbacks();
+            Assert.IsTrue(continued);
+
+            forgottenDeferred.Resolve();
+        }
+
+        [Test]
         public void ForceAsync_ContinuationWillBeInvokedProperly_void(
             [Values(SynchronizationType.Foreground, SynchronizationType.Explicit
 #if !UNITY_WEBGL
@@ -175,7 +232,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);
@@ -236,7 +293,7 @@ namespace ProtoPromise.Tests.APIs
             [Values] bool asyncFlowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = asyncFlowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(asyncFlowExecutionContext);
 
             var foregroundThread = Thread.CurrentThread;
             var continuationOptions = TestHelper.GetContinuationOptions(continuationContext, completedBehavior);

@@ -33,7 +33,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Distinct<TSource, TEqualityComparer>(this AsyncEnumerable<TSource> source, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctHelper.Distinct(source.GetAsyncEnumerator(), comparer);
         }
@@ -59,7 +59,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> Distinct<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctHelper.Distinct(configuredSource.GetAsyncEnumerator(), comparer);
         }
@@ -90,8 +90,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> source, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -126,8 +126,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctBy(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -158,8 +158,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -194,8 +194,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, TKey> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctBy(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -226,8 +226,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this AsyncEnumerable<TSource> source, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -262,8 +262,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this AsyncEnumerable<TSource> source, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctByAwait(source.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }
@@ -294,8 +294,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, Func<TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(keySelector), comparer);
         }
@@ -330,8 +330,8 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<TSource> DistinctBy<TSource, TKey, TCapture, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TCapture captureValue, Func<TCapture, TSource, Promise<TKey>> keySelector, TEqualityComparer comparer)
             where TEqualityComparer : IEqualityComparer<TKey>
         {
-            ValidateArgument(keySelector, nameof(keySelector), 1);
-            ValidateArgument(comparer, nameof(comparer), 1);
+            ValidateArgument(keySelector, nameof(keySelector));
+            ValidateArgument(comparer, nameof(comparer));
 
             return Internal.DistinctByHelper<TKey>.DistinctByAwait(configuredSource.GetAsyncEnumerator(), DelegateWrapper.Create(captureValue, keySelector), comparer);
         }

@@ -32,10 +32,11 @@ namespace Proto.Promises.Threading
         public AsyncAutoResetEvent(bool initialState)
         {
             _isSet = initialState;
-            SetCreatedStacktrace();
+#if PROMISE_DEBUG
+            // Only the finalizer reads it, which reports abandoned waiters in DEBUG mode.
+            Internal.SetCreatedStacktrace(this);
+#endif
         }
-
-        partial void SetCreatedStacktrace();
 
         /// <summary>
         /// Whether this event is currently set.

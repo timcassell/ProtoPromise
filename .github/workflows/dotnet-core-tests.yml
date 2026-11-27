@@ -66,6 +66,9 @@ jobs:
           name: dotnet-test-results-net10.0-${{ matrix.config }}-${{ matrix.objectPooling.name }}-${{ matrix.devMode.name }}
           path: TestResults/*.trx
           reporter: dotnet-trx
+          list-files: failed
+          list-suites: failed
+          list-tests: failed
 
       - uses: actions/upload-artifact@v7
         if: always()

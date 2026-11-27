@@ -10,6 +10,7 @@
 1. [Special Exceptions](special-exceptions.md)
 1. [Context Switching](context-switching.md)
 1. [Configuration](configuration.md)
+1. [Causality Traces](causality-traces.md)
 1. [Capture Values](capture-values.md)
 1. [Multiple Consumer](multiple-consumer.md)
 1. [Parallel Iterations](parallel-iterations.md)

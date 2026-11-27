@@ -39,7 +39,7 @@ namespace Proto.Promises.Linq
         {
             if (count < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "count is less than zero", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(count), "count is less than zero", Internal.GetFormattedStacktrace());
             }
 
             return count == 0

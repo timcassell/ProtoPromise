@@ -30,7 +30,7 @@ namespace Proto.Promises.Linq
         {
             if (index < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(index), "index must be greater or equal to zero.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(index), "index must be greater or equal to zero.", Internal.GetFormattedStacktrace());
             }
 
             return Core(source.GetAsyncEnumerator(cancelationToken), index);
@@ -53,7 +53,7 @@ namespace Proto.Promises.Linq
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                throw new ArgumentOutOfRangeException(nameof(index), "index must be less than the number of elements in the sequence.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(index), "index must be less than the number of elements in the sequence.", Internal.GetFormattedStacktrace());
             }
         }
 
@@ -115,7 +115,7 @@ namespace Proto.Promises.Linq
 
             if (index.Value < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(index), $"index ({index}) is out of range.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(index), $"index ({index}) is out of range.", Internal.GetFormattedStacktrace());
             }
 
             return Core(source.GetAsyncEnumerator(cancelationToken), index.Value);
@@ -151,7 +151,7 @@ namespace Proto.Promises.Linq
                     await asyncEnumerator.DisposeAsync();
                 }
 
-                throw new ArgumentOutOfRangeException(nameof(index), $"index ({new System.Index(indexFromEnd, true)}) is out of range.", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(index), $"index ({new System.Index(indexFromEnd, true)}) is out of range.", Internal.GetFormattedStacktrace());
             }
         }
 

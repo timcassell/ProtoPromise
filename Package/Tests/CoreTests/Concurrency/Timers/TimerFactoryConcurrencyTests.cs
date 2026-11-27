@@ -42,7 +42,7 @@ namespace ProtoPromise.Tests.Concurrency.Timers
             [Values] bool flowExecutionContext)
         {
             // Normally AsyncFlowExecutionContextEnabled cannot be disabled after it is enabled, but we need to test both configurations.
-            Promise.Config.s_asyncFlowExecutionContextEnabled = flowExecutionContext;
+            Promise.Config.SetAsyncFlowExecutionContextEnabled(flowExecutionContext);
 
             TimerFactory provider = customTimeProvider
                 ? TimerFactory.FromTimeProvider(new CustomTimeProvider())

@@ -71,7 +71,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> Create(Func<AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> asyncIterator)
         {
-            ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
+            ValidateArgument(asyncIterator, nameof(asyncIterator));
 
             return Create(new Internal.AsyncIterator<T>(asyncIterator));
         }
@@ -81,7 +81,7 @@ namespace Proto.Promises.Linq
         /// </summary>
         public static AsyncEnumerable<T> Create<TCapture>(TCapture captureValue, Func<TCapture, AsyncStreamWriter<T>, CancelationToken, AsyncIteratorMethod> asyncIterator)
         {
-            ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
+            ValidateArgument(asyncIterator, nameof(asyncIterator));
 
             return Create(new Internal.AsyncIterator<T, TCapture>(captureValue, asyncIterator));
         }
@@ -93,7 +93,7 @@ namespace Proto.Promises.Linq
         public static AsyncEnumerable<T> Create<TAsyncIterator>(TAsyncIterator asyncIterator)
             where TAsyncIterator : IAsyncIterator<T>
         {
-            ValidateArgument(asyncIterator, nameof(asyncIterator), 1);
+            ValidateArgument(asyncIterator, nameof(asyncIterator));
 
             var enumerable = Internal.AsyncEnumerableCreate<T, TAsyncIterator>.GetOrCreate(asyncIterator);
             return new AsyncEnumerable<T>(enumerable);
@@ -103,12 +103,12 @@ namespace Proto.Promises.Linq
     partial struct AsyncEnumerable<T>
     {
         // Calls to this get compiled away in RELEASE mode
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames);
+        static partial void ValidateArgument<TArg>(TArg arg, string argName);
 
 #if PROMISE_DEBUG
-        static partial void ValidateArgument<TArg>(TArg arg, string argName, int skipFrames)
+        static partial void ValidateArgument<TArg>(TArg arg, string argName)
         {
-            Internal.ValidateArgument(arg, argName, skipFrames + 1);
+            Internal.ValidateArgument(arg, argName);
         }
 #endif
     }

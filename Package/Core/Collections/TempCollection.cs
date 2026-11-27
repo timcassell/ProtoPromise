@@ -212,18 +212,23 @@ namespace Proto.Promises.Collections
 #if !PROTO_PROMISE_DEVELOPER_MODE
     [DebuggerNonUserCode, StackTraceHidden]
 #endif
-    internal sealed class TempCollectionDisposedChecker : Internal.ITraceable
+    internal sealed class TempCollectionDisposedChecker
+#if PROMISE_DEBUG
+        : Internal.ITraceable
+#endif
     {
 #if PROMISE_DEBUG
-        Internal.CausalityTrace Internal.ITraceable.Trace { get; set; }
-#endif
+        // In DEBUG mode, causality traces are stored in fields (see Internal.ITraceable).
+        Diagnostics.CausalityTrace Internal.ITraceable.Trace { get; set; }
 
+#endif
         internal bool IsDisposed { get; private set; }
 
         internal TempCollectionDisposedChecker()
         {
 #if PROTO_PROMISE_DEVELOPER_MODE
-            Internal.SetCreatedStacktraceInternal(this, 2);
+            // Only the tests' leak tracker reads it (see Internal.AssertAllObjectsReleased).
+            Internal.SetCreatedStacktrace(this);
 #endif
             Internal.MarkNotInPool(this);
         }
@@ -259,7 +264,7 @@ namespace Proto.Promises.Collections
         {
             if (_disposedChecker == null || _disposedChecker.IsDisposed)
             {
-                throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace(2));
+                throw new InvalidOperationException("TempCollection is invalid.", Internal.GetFormattedStacktrace());
             }
         }
 #endif // PROMISE_DEBUG || PROTO_PROMISE_DEVELOPER_MODE

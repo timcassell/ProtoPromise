@@ -30,7 +30,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.GetRetainer()", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Preserve()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             var r = _ref;
             if (r == null)
             {
@@ -48,7 +48,7 @@ namespace Proto.Promises
         [Obsolete("Prefer Promise.Retainer.WaitAsync()", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise Duplicate()
         {
-            ValidateOperation(1);
+            ValidateOperation();
             return Internal.PromiseRefBase.CallbackHelperVoid.Duplicate(this);
         }
 
@@ -86,8 +86,8 @@ namespace Proto.Promises
         [Obsolete("Prefer ContinueWith", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise CatchCancelation(Action onCanceled, CancelationToken cancelationToken = default)
         {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, nameof(onCanceled), 1);
+            ValidateOperation();
+            ValidateArgument(onCanceled, nameof(onCanceled));
 
             return ContinueWith(onCanceled, (callback, resultContainer) =>
             {
@@ -110,8 +110,8 @@ namespace Proto.Promises
         [Obsolete("Prefer ContinueWith", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise CatchCancelation(Func<Promise> onCanceled, CancelationToken cancelationToken = default)
         {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, nameof(onCanceled), 1);
+            ValidateOperation();
+            ValidateArgument(onCanceled, nameof(onCanceled));
 
             return ContinueWith(onCanceled,
                 (callback, resultContainer) => resultContainer.State == State.Canceled ? callback.Invoke() : Promise.Resolved(),
@@ -476,8 +476,8 @@ namespace Proto.Promises
         [Obsolete("Prefer ContinueWith", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Action<TCaptureCancel> onCanceled, CancelationToken cancelationToken = default)
         {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, nameof(onCanceled), 1);
+            ValidateOperation();
+            ValidateArgument(onCanceled, nameof(onCanceled));
 
             return ContinueWith((cancelCaptureValue, onCanceled), (cv, resultContainer) =>
             {
@@ -500,8 +500,8 @@ namespace Proto.Promises
         [Obsolete("Prefer ContinueWith", false), EditorBrowsable(EditorBrowsableState.Never)]
         public Promise CatchCancelation<TCaptureCancel>(TCaptureCancel cancelCaptureValue, Func<TCaptureCancel, Promise> onCanceled, CancelationToken cancelationToken = default)
         {
-            ValidateOperation(1);
-            ValidateArgument(onCanceled, nameof(onCanceled), 1);
+            ValidateOperation();
+            ValidateArgument(onCanceled, nameof(onCanceled));
 
             return ContinueWith((cancelCaptureValue, onCanceled),
                 (cv, resultContainer) => resultContainer.State == State.Canceled ? cv.onCanceled.Invoke(cv.cancelCaptureValue) : Promise.Resolved(),

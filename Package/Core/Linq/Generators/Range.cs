@@ -25,13 +25,13 @@ namespace Proto.Promises.Linq
         {
             if (count < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "count is less than zero", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(count), "count is less than zero", Internal.GetFormattedStacktrace());
             }
 
             var end = (long) start + count - 1L;
             if (end > int.MaxValue)
             {
-                throw new ArgumentOutOfRangeException(nameof(count), "start + count - 1 is larger than int.MaxValue", Internal.GetFormattedStacktrace(1));
+                throw new ArgumentOutOfRangeException(nameof(count), "start + count - 1 is larger than int.MaxValue", Internal.GetFormattedStacktrace());
             }
 
             return count == 0

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net8.0;net9.0</TargetFrameworks>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <OutDir>bin\$(TargetFramework)\$(Configuration)</OutDir>
     <IsTrimmable>true</IsTrimmable>
@@ -34,7 +34,7 @@
     <Otherwise>
       <PropertyGroup>
         <!--We can use the latest C# version in net6.0 and later since Unity doesn't even support it yet.-->
-        <LangVersion>12</LangVersion>
+        <LangVersion>14</LangVersion>
         <!--We check UNITY_2021_2_OR_NEWER to see if C#9 is supported, since Unity doesn't have a language define constant for it.-->
         <DefineConstants>$(DefineConstants);UNITY_2021_2_OR_NEWER</DefineConstants>
       </PropertyGroup>

@@ -36,7 +36,7 @@ namespace Proto.Promises.Linq
         public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this AsyncEnumerable<TSource> source, TSource value, TEqualityComparer equalityComparer, CancelationToken cancelationToken = default)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(equalityComparer, nameof(equalityComparer), 1);
+            ValidateArgument(equalityComparer, nameof(equalityComparer));
 
             return ContainsCore(source.GetAsyncEnumerator(cancelationToken), value, equalityComparer);
         }
@@ -84,7 +84,7 @@ namespace Proto.Promises.Linq
         public static Promise<bool> ContainsAsync<TSource, TEqualityComparer>(this in ConfiguredAsyncEnumerable<TSource> configuredSource, TSource value, TEqualityComparer equalityComparer)
             where TEqualityComparer : IEqualityComparer<TSource>
         {
-            ValidateArgument(equalityComparer, nameof(equalityComparer), 1);
+            ValidateArgument(equalityComparer, nameof(equalityComparer));
 
             return ContainsCore(configuredSource.GetAsyncEnumerator(), value, equalityComparer);
         }

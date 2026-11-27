@@ -298,7 +298,7 @@ namespace Proto.Promises
                 throw new InvalidOperationException(
                     "SynchronizationOption.Foreground was provided, but Promise.Config.ForegroundContext was null. " +
                     "You should set Promise.Config.ForegroundContext at the start of your application (which may be as simple as 'Promise.Config.ForegroundContext = SynchronizationContext.Current;').",
-                    Internal.GetFormattedStacktrace(3));
+                    Internal.GetFormattedStacktrace());
             }
             return context;
         }

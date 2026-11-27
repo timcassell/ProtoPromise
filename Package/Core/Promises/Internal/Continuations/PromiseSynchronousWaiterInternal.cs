@@ -64,7 +64,7 @@ namespace Proto.Promises
                 var stopwatch = ValueStopwatch.StartNew();
                 if (timeout < TimeSpan.Zero & timeout.Milliseconds != Timeout.Infinite)
                 {
-                    throw new ArgumentOutOfRangeException(nameof(timeout), "timeout must be greater than or equal to 0, or Timeout.InfiniteTimespan (-1 ms).", GetFormattedStacktrace(3));
+                    throw new ArgumentOutOfRangeException(nameof(timeout), "timeout must be greater than or equal to 0, or Timeout.InfiniteTimespan (-1 ms).", GetFormattedStacktrace());
                 }
 
                 var waiter = GetOrCreate();
