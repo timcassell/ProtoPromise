@@ -99,6 +99,32 @@ namespace ProtoPromise.Tests.APIs.Timers
             Assert.AreEqual(400, state.Period);
             Assert.GreaterOrEqual(state.Stopwatch.ElapsedMilliseconds, minMilliseconds, $"The total fired periods {state.Stopwatch.ElapsedMilliseconds}ms expected to be greater than the expected min {minMilliseconds}ms");
         }
+
+        private sealed class FakeTimerFactory : TimerFactory
+        {
+            public override Timer CreateTimer(System.Threading.TimerCallback callback, object state, TimeSpan dueTime, TimeSpan period)
+                => throw new NotImplementedException();
+        }
+
+        [Test]
+        public void PromiseConfigDefaultTimerFactory_CanBeSetAndRestored()
+        {
+            var original = Promise.Config.DefaultTimerFactory;
+            Assert.AreSame(TimerFactory.System, original);
+            var timerFactory = new FakeTimerFactory();
+            Promise.Config.DefaultTimerFactory = timerFactory;
+            try
+            {
+                Assert.AreSame(timerFactory, Promise.Config.DefaultTimerFactory);
+                Assert.Throws<Proto.Promises.ArgumentNullException>(() => Promise.Config.DefaultTimerFactory = null);
+                Assert.AreSame(timerFactory, Promise.Config.DefaultTimerFactory);
+            }
+            finally
+            {
+                Promise.Config.DefaultTimerFactory = original;
+            }
+            Assert.AreSame(original, Promise.Config.DefaultTimerFactory);
+        }
     }
 }
 
